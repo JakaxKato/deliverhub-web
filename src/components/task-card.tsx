@@ -46,20 +46,8 @@ export function TaskCard({
     }
   };
 
-  // State-based button permissions
-  const _canStartTask = () => {
-    if (task.status !== "TODO" && task.status !== "BLOCKED") return false;
-    if (task.isBlocked) return false; // Strictly blocked!
-    return true;
-  };
-
-  const _canCompleteTask = () => {
-    if (task.status !== "IN_PROGRESS") return false;
-    // CRITICAL: PM CANNOT mark task as Done!
-    if (userRole === "PM") return false;
-    return true;
-  };
-
+  // State-based button permissions are enforced by the backend; the UI renders
+  // locked/disabled actions directly from `task.isBlocked` and `userRole` below.
   return (
     <div
       onClick={() => onSelectTask(task)}
@@ -149,7 +137,7 @@ export function TaskCard({
 
           {task.assignee && (
             <span className="text-[11px] text-slate-300 font-medium truncate max-w-[100px]">
-              {(task.assignee as any).name}
+              {task.assignee.name}
             </span>
           )}
         </div>

@@ -14,7 +14,7 @@ import { TaskBoard } from "../components/task-board";
 import { TaskDetailDrawer } from "../components/task-detail-drawer";
 import { TaskTable } from "../components/task-table";
 import { api } from "../lib/api";
-import { buildQueryParams } from "../lib/ezfilter";
+import { buildQueryParams, type QueryFilterOptions } from "../lib/ezfilter";
 import { useAuthStore } from "../stores/auth-store";
 import type { Project, ProjectMetrics, Task } from "../types";
 
@@ -78,12 +78,12 @@ export default function DashboardPage() {
       if (!currentProject)
         return { data: [], meta: { page: 1, rows: 20, total: 0, totalPages: 1 } };
 
-      const params: any = {
+      const params: Record<string, string | number> = {
         projectId: currentProject.id,
       };
 
       if (activeView === "table") {
-        const queryOptions: any = {
+        const queryOptions: QueryFilterOptions = {
           page: tablePage,
           rows: tableRows,
           orderKey: tableOrderKey,

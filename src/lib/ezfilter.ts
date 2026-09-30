@@ -1,7 +1,7 @@
 export interface QueryFilterOptions {
-  filters?: Record<string, any>;
-  searchFilters?: Record<string, any>;
-  rangedFilters?: { key: string; start: any; end: any }[];
+  filters?: Record<string, unknown>;
+  searchFilters?: Record<string, unknown>;
+  rangedFilters?: { key: string; start: unknown; end: unknown }[];
   page?: number;
   rows?: number;
   orderKey?: string;
@@ -16,7 +16,7 @@ export function buildQueryParams(options: QueryFilterOptions): Record<string, st
 
   if (options.filters && Object.keys(options.filters).length > 0) {
     // Only include non-empty values
-    const cleaned: Record<string, any> = {};
+    const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(options.filters)) {
       if (v !== undefined && v !== null && v !== "" && (!Array.isArray(v) || v.length > 0)) {
         cleaned[k] = v;
@@ -28,7 +28,7 @@ export function buildQueryParams(options: QueryFilterOptions): Record<string, st
   }
 
   if (options.searchFilters && Object.keys(options.searchFilters).length > 0) {
-    const cleaned: Record<string, any> = {};
+    const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(options.searchFilters)) {
       if (v !== undefined && v !== null && v !== "") {
         cleaned[k] = v;

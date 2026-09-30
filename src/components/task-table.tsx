@@ -201,7 +201,7 @@ export function TaskTable({
                   <span className="text-[11px] font-semibold">{task.priority}</span>
                 </td>
                 <td className="py-3 px-4 text-slate-400">
-                  {task.assignee ? (task.assignee as any).name : "Unassigned"}
+                  {task.assignee ? task.assignee.name : "Unassigned"}
                 </td>
                 <td className="py-3 px-4 text-center font-mono text-slate-500">v{task.version}</td>
                 <td className="py-3 px-4 text-right">

@@ -16,9 +16,9 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { api } from "../lib/api";
+import { api, getApiErrorMessage } from "../lib/api";
 import { useConflictStore } from "../stores/conflict-store";
-import type { Role, Task } from "../types";
+import type { Role, Task, TaskPrerequisite } from "../types";
 
 interface TaskDrawerProps {
   task: Task | null;
@@ -26,6 +26,8 @@ interface TaskDrawerProps {
   userRole?: Role;
   onClose: () => void;
 }
+
+type DrawerTab = "overview" | "dependencies" | "attachments" | "audit";
 
 export function TaskDetailDrawer({
   task: initialTask,
@@ -35,21 +37,16 @@ export function TaskDetailDrawer({
 }: TaskDrawerProps) {
   const queryClient = useQueryClient();
   const { openConflict } = useConflictStore();
-  const [activeTab, setActiveTab] = useState<"overview" | "dependencies" | "attachments" | "audit">(
-    "overview",
-  );
+  const [activeTab, setActiveTab] = useState<DrawerTab>("overview");
 
   // Form states for PM editing description
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionValue, setDescriptionValue] = useState(initialTask?.description || "");
-  const [_isClientVisibleValue, _setIsClientVisibleValue] = useState(
-    initialTask?.isClientVisible ?? false,
-  );
 
   // Attachment form state
   const [attachmentName, setAttachmentName] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
-  const [attachmentType, _setAttachmentType] = useState("link/figma");
+  const [attachmentType] = useState("link/figma");
 
   // Dependency form state
   const [selectedPrereqId, setSelectedPrereqId] = useState("");
@@ -81,14 +78,16 @@ export function TaskDetailDrawer({
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task", task?.id] });
     },
-    onError: (err: any) => {
-      if (err.response?.status === 409) {
+    onError: (err) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
         openConflict({
-          message: err.response.data.message,
-          latestData: err.response.data.latestData,
+          message: getApiErrorMessage(err, "Concurrency conflict."),
+          latestData: (err as { response?: { data?: { latestData?: Task } } })?.response?.data
+            ?.latestData,
         });
       } else {
-        alert(err.response?.data?.message || "Failed to update deliverable details.");
+        alert(getApiErrorMessage(err, "Failed to update deliverable details."));
       }
     },
   });
@@ -107,8 +106,8 @@ export function TaskDetailDrawer({
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task", task?.id] });
     },
-    onError: (err: any) => {
-      setDependencyError(err.response?.data?.message || "Failed to add dependency.");
+    onError: (err) => {
+      setDependencyError(getApiErrorMessage(err, "Failed to add dependency."));
     },
   });
 
@@ -146,7 +145,7 @@ export function TaskDetailDrawer({
 
   // Potential prerequisites to add (exclude self and already added)
   const existingDepIds = new Set(
-    (task.dependencies || []).map((d: any) => d.prerequisiteTask?.id || d.id),
+    (task.dependencies || []).map((d) => d.prerequisiteTask?.id || ""),
   );
   const availablePrereqs = allTasks.filter((t) => t.id !== task.id && !existingDepIds.has(t.id));
 
@@ -203,7 +202,7 @@ export function TaskDetailDrawer({
             .map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as DrawerTab)}
                 className={`py-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
                   activeTab === tab.id
                     ? "border-cyan-400 text-cyan-300"
@@ -274,7 +273,7 @@ export function TaskDetailDrawer({
                     Assigned Executor
                   </span>
                   <span className="text-sm font-bold text-white">
-                    {task.assignee ? (task.assignee as any).name : "Unassigned"}
+                    {task.assignee ? task.assignee.name : "Unassigned"}
                   </span>
                 </div>
               </div>
@@ -377,8 +376,8 @@ export function TaskDetailDrawer({
                   </div>
                 )}
 
-                {(task.dependencies || []).map((dep: any) => {
-                  const prereq = dep.prerequisiteTask || dep;
+                {(task.dependencies || []).map((dep) => {
+                  const prereq: TaskPrerequisite = dep.prerequisiteTask;
                   const isPrereqDone = prereq.status === "DONE";
 
                   return (

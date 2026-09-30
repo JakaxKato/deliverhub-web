@@ -199,7 +199,7 @@ export function ClientPortalView({
               <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
                 <div className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{(task.assignee as any)?.name || "NodeWave Specialist"}</span>
+                  <span>{task.assignee?.name || "NodeWave Specialist"}</span>
                 </div>
                 <span className="text-[11px] font-mono text-slate-500">
                   Updated {new Date(task.updatedAt).toLocaleDateString()}

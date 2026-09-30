@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, ListTodo, Lock, Plus, RefreshCw, Search } from "lucide-react";
 import { useState } from "react";
-import { api } from "../lib/api";
+import { api, getApiErrorMessage } from "../lib/api";
 import { useConflictStore } from "../stores/conflict-store";
 import type { Role, Task } from "../types";
 import { TaskCard } from "./task-card";
@@ -44,18 +44,20 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["metrics"] });
     },
-    onError: (err: any) => {
-      if (err.response?.status === 409) {
+    onError: (err) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
         openConflict({
-          message: err.response.data.message,
-          latestData: err.response.data.latestData,
+          message: getApiErrorMessage(err, "Concurrency conflict."),
+          latestData: (err as { response?: { data?: { latestData?: Task } } })?.response?.data
+            ?.latestData,
         });
-      } else if (err.response?.status === 422) {
-        alert(
-          `❌ Cannot start deliverable:\n${err.response.data.message}\n${err.response.data.blockedReason || ""}`,
-        );
+      } else if (status === 422) {
+        const blockedReason = (err as { response?: { data?: { blockedReason?: string } } })
+          ?.response?.data?.blockedReason;
+        alert(`Cannot start deliverable:\n${getApiErrorMessage(err)}\n${blockedReason || ""}`);
       } else {
-        alert(err.response?.data?.message || "Failed to update deliverable status.");
+        alert(getApiErrorMessage(err, "Failed to update deliverable status."));
       }
     },
   });

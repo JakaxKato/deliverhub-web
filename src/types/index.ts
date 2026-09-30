@@ -56,7 +56,7 @@ export interface AuditLog {
   changedColumn?: string | null;
   oldValue?: string | null;
   newValue?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
   timestamp: string;
   user: {
     id: string;

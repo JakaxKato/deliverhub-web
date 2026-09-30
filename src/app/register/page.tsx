@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
-import { api } from "../../lib/api";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth-store";
 import type { Department, Role } from "../../types";
 
@@ -40,8 +40,8 @@ export default function RegisterPage() {
         login(token, user);
         router.push("/");
       }
-    } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || "Registration failed.");
+    } catch (err) {
+      setErrorMsg(getApiErrorMessage(err, "Registration failed."));
     } finally {
       setSubmitting(false);
     }

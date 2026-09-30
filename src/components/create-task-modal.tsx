@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Check, Layers, X } from "lucide-react";
 import { useState } from "react";
-import { api } from "../lib/api";
+import { api, getApiErrorMessage } from "../lib/api";
 import type { Department, Priority, Task } from "../types";
 
 interface CreateTaskModalProps {
@@ -49,8 +49,8 @@ export function CreateTaskModal({
       setSelectedPrereqIds([]);
       onClose();
     },
-    onError: (err: any) => {
-      setErrorMessage(err.response?.data?.message || "Failed to create deliverable.");
+    onError: (err) => {
+      setErrorMessage(getApiErrorMessage(err, "Failed to create deliverable."));
     },
   });
 
@@ -118,7 +118,7 @@ export function CreateTaskModal({
               <label className="block text-slate-300 font-semibold mb-1">Department</label>
               <select
                 value={department}
-                onChange={(e) => setDepartment(e.target.value as any)}
+                onChange={(e) => setDepartment(e.target.value as Department)}
                 className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
               >
                 <option value="PRODUCT">Product Management</option>
@@ -132,7 +132,7 @@ export function CreateTaskModal({
               <label className="block text-slate-300 font-semibold mb-1">Priority</label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as Priority)}
                 className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
               >
                 <option value="LOW">Low</option>

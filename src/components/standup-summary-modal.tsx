@@ -25,7 +25,9 @@ interface StandupModalProps {
 
 export function StandupSummaryModal({ projectId, isOpen, onClose }: StandupModalProps) {
   const [copied, setCopied] = useState(false);
-  const [selectedDate, _setSelectedDate] = useState<string>("");
+  // Target date defaults to "yesterday" server-side; query a custom date by
+  // appending ?date=YYYY-MM-DD when needed.
+  const selectedDate = "";
 
   const { data, isLoading, error } = useQuery<StandupSummary>({
     queryKey: ["standup-summary", projectId, selectedDate],

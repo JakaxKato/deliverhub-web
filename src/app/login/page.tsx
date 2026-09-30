@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
-import { api } from "../../lib/api";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth-store";
 
 export default function LoginPage() {
@@ -29,8 +29,8 @@ export default function LoginPage() {
         login(token, user);
         router.push("/");
       }
-    } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || "Login failed. Check your credentials.");
+    } catch (err) {
+      setErrorMsg(getApiErrorMessage(err, "Login failed. Check your credentials."));
     } finally {
       setSubmitting(false);
     }
@@ -41,8 +41,8 @@ export default function LoginPage() {
     try {
       await quickSwitch(targetEmail);
       router.push("/");
-    } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || "Quick login failed.");
+    } catch (err) {
+      setErrorMsg(getApiErrorMessage(err, "Quick login failed."));
     }
   };
 
@@ -209,7 +209,7 @@ export default function LoginPage() {
           </form>
 
           <div className="pt-2 text-center text-xs text-slate-400">
-            Don't have an account?{" "}
+            {"Don't have an account? "}
             <Link href="/register" className="text-cyan-400 hover:underline font-semibold">
               Create an account
             </Link>
