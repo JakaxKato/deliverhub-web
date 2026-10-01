@@ -10,6 +10,7 @@ import {
   User,
 } from "lucide-react";
 import type { ProjectMetrics, Task } from "../types";
+import { EmptyState } from "./ui-states";
 
 interface ClientPortalProps {
   metrics?: ProjectMetrics;
@@ -146,6 +147,15 @@ export function ClientPortalView({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {tasks.length === 0 && (
+            <div className="md:col-span-2 rounded-2xl border border-slate-800 bg-[#0f172a]/40">
+              <EmptyState
+                title="No client-visible deliverables published yet"
+                message="The Product Manager has not flagged any deliverable as Client-Visible for this project."
+              />
+            </div>
+          )}
+
           {tasks.map((task) => (
             <div
               key={task.id}

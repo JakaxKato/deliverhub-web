@@ -7,6 +7,7 @@ import { api, getApiErrorMessage } from "../lib/api";
 import { useConflictStore } from "../stores/conflict-store";
 import type { Role, Task } from "../types";
 import { TaskCard } from "./task-card";
+import { EmptyState } from "./ui-states";
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -212,9 +213,14 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
               {/* Tasks List */}
               <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
                 {col.tasks.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs">
-                    <span>No deliverables in this lane</span>
-                  </div>
+                  <EmptyState
+                    title="No deliverables in this lane"
+                    message={
+                      col.id === "BLOCKED"
+                        ? "Blocked tasks appear here automatically when a prerequisite is not Done yet."
+                        : undefined
+                    }
+                  />
                 )}
 
                 {col.tasks.map((task) => (

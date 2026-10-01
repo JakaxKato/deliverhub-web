@@ -13,7 +13,8 @@ import { StandupSummaryModal } from "../components/standup-summary-modal";
 import { TaskBoard } from "../components/task-board";
 import { TaskDetailDrawer } from "../components/task-detail-drawer";
 import { TaskTable } from "../components/task-table";
-import { api } from "../lib/api";
+import { ErrorState, LoadingState } from "../components/ui-states";
+import { api, getApiErrorMessage } from "../lib/api";
 import { buildQueryParams, type QueryFilterOptions } from "../lib/ezfilter";
 import { useAuthStore } from "../stores/auth-store";
 import type { Project, ProjectMetrics, Task } from "../types";
@@ -42,7 +43,12 @@ export default function DashboardPage() {
   }, [authLoading, isAuthenticated, router]);
 
   // Fetch Projects accessible to this user
-  const { data: projectsData, isLoading: projectsLoading } = useQuery<{
+  const {
+    data: projectsData,
+    isLoading: projectsLoading,
+    isError: projectsError,
+    refetch: refetchProjects,
+  } = useQuery<{
     data: Project[];
   }>({
     queryKey: ["projects", user?.id],
@@ -57,7 +63,13 @@ export default function DashboardPage() {
   const currentProject = projects[0]; // Primary project: NW-CORE
 
   // Fetch Tasks with EzFilter contract
-  const { data: tasksResponse } = useQuery<{
+  const {
+    data: tasksResponse,
+    isLoading: tasksLoading,
+    isError: tasksError,
+    error: tasksErrorObj,
+    refetch: refetchTasks,
+  } = useQuery<{
     data: Task[];
     meta: { page: number; rows: number; total: number; totalPages: number };
   }>({
@@ -109,7 +121,12 @@ export default function DashboardPage() {
   });
 
   // Fetch Project Aggregate Metrics (for Client and Executive view)
-  const { data: metricsData } = useQuery<{ data: ProjectMetrics }>({
+  const {
+    data: metricsData,
+    isLoading: metricsLoading,
+    isError: metricsError,
+    refetch: refetchMetrics,
+  } = useQuery<{ data: ProjectMetrics }>({
     queryKey: ["metrics", currentProject?.id, user?.id],
     queryFn: async () => {
       const res = await api.get(`/projects/${currentProject.id}/metrics`);
@@ -142,6 +159,12 @@ export default function DashboardPage() {
     }
   };
 
+  const handleRetry = () => {
+    refetchProjects();
+    refetchTasks();
+    refetchMetrics();
+  };
+
   return (
     <div className="min-h-screen bg-[#090d16] flex flex-col text-slate-100">
       {/* 1-Click Role Switcher for instant assessor testing */}
@@ -158,51 +181,95 @@ export default function DashboardPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
-        {projectsLoading && (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
-            <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-            <span className="text-xs">Loading deliverable workspace...</span>
-          </div>
+        {projectsLoading && <LoadingState label="Loading deliverable workspace..." />}
+
+        {!projectsLoading && projectsError && (
+          <ErrorState
+            title="Failed to load project workspace"
+            message="The NodeWave API could not be reached. Please check that the backend is running and try again."
+            onRetry={handleRetry}
+          />
+        )}
+
+        {!projectsLoading && !projectsError && tasksLoading && (
+          <LoadingState label="Loading deliverables..." />
+        )}
+
+        {!projectsLoading && !projectsError && tasksError && (
+          <ErrorState
+            title="Failed to load deliverables"
+            message={getApiErrorMessage(
+              tasksErrorObj,
+              "The NodeWave API could not be reached. Please try again.",
+            )}
+            onRetry={handleRetry}
+          />
         )}
 
         {/* View 1: Client Guest Dedicated Portal */}
-        {user?.role === "CLIENT" && (
-          <ClientPortalView
-            metrics={metrics}
-            tasks={tasks}
-            projectName={currentProject?.name}
-            projectKey={currentProject?.key}
-            onSelectTask={setSelectedTask}
-          />
+        {!projectsLoading && !projectsError && !tasksLoading && !tasksError && (
+          <>
+            {user?.role === "CLIENT" && metricsLoading && (
+              <LoadingState label="Loading project metrics..." />
+            )}
+
+            {user?.role === "CLIENT" && metricsError && (
+              <ErrorState
+                title="Failed to load project metrics"
+                message="The NodeWave API could not be reached. Please try again."
+                onRetry={handleRetry}
+              />
+            )}
+
+            {user?.role === "CLIENT" && !metricsLoading && !metricsError && (
+              <ClientPortalView
+                metrics={metrics}
+                tasks={tasks}
+                projectName={currentProject?.name}
+                projectKey={currentProject?.key}
+                onSelectTask={setSelectedTask}
+              />
+            )}
+          </>
         )}
 
         {/* View 2: Internal Team & PM Kanban Board */}
-        {user?.role !== "CLIENT" && activeView === "board" && (
-          <TaskBoard
-            tasks={tasks}
-            userRole={user?.role}
-            onSelectTask={setSelectedTask}
-            onOpenCreateModal={() => setIsCreateModalOpen(true)}
-          />
-        )}
+        {!projectsLoading &&
+          !projectsError &&
+          !tasksLoading &&
+          !tasksError &&
+          user?.role !== "CLIENT" &&
+          activeView === "board" && (
+            <TaskBoard
+              tasks={tasks}
+              userRole={user?.role}
+              onSelectTask={setSelectedTask}
+              onOpenCreateModal={() => setIsCreateModalOpen(true)}
+            />
+          )}
 
         {/* View 3: Internal Team & PM Standard EzFilter Table */}
-        {user?.role !== "CLIENT" && activeView === "table" && (
-          <TaskTable
-            tasks={tasks}
-            onSelectTask={setSelectedTask}
-            page={tablePage}
-            rows={tableRows}
-            total={meta.total}
-            onPageChange={setTablePage}
-            onRowsChange={setTableRows}
-            onSortChange={handleSortChange}
-            searchFilter={searchFilter}
-            onSearchChange={setSearchFilter}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-          />
-        )}
+        {!projectsLoading &&
+          !projectsError &&
+          !tasksLoading &&
+          !tasksError &&
+          user?.role !== "CLIENT" &&
+          activeView === "table" && (
+            <TaskTable
+              tasks={tasks}
+              onSelectTask={setSelectedTask}
+              page={tablePage}
+              rows={tableRows}
+              total={meta.total}
+              onPageChange={setTablePage}
+              onRowsChange={setTableRows}
+              onSortChange={handleSortChange}
+              searchFilter={searchFilter}
+              onSearchChange={setSearchFilter}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+            />
+          )}
       </main>
 
       {/* Task Detail Drawer */}
