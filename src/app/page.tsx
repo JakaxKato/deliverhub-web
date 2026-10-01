@@ -4,23 +4,29 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AppShell } from "../components/app-shell";
 import { ClientPortalView } from "../components/client-portal-view";
 import { CreateTaskModal } from "../components/create-task-modal";
-import { Navbar } from "../components/navbar";
-
 import { RoleSwitcherBanner } from "../components/role-switcher-banner";
 import { StandupSummaryModal } from "../components/standup-summary-modal";
 import { TaskBoard } from "../components/task-board";
 import { TaskDetailDrawer } from "../components/task-detail-drawer";
 import { TaskTable } from "../components/task-table";
-import { ErrorState, LoadingState } from "../components/ui-states";
+import { BoardSkeleton, TableSkeleton } from "../components/ui/skeleton";
+import { ErrorState } from "../components/ui-states";
 import { api, getApiErrorMessage } from "../lib/api";
 import { buildQueryParams, type QueryFilterOptions } from "../lib/ezfilter";
 import { useAuthStore } from "../stores/auth-store";
 import type { Project, ProjectMetrics, Task } from "../types";
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const {
+    user,
+    isAuthenticated,
+    isLoading: authLoading,
+    activeProjectId,
+    setActiveProjectId,
+  } = useAuthStore();
   const router = useRouter();
 
   const [activeView, setActiveView] = useState<"board" | "table">("board");
@@ -60,7 +66,7 @@ export default function DashboardPage() {
   });
 
   const projects = projectsData?.data || [];
-  const currentProject = projects[0]; // Primary project: NW-CORE
+  const currentProject = projects.find((p) => p.id === activeProjectId) ?? projects[0]; // Primary project: NW-CORE
 
   // Fetch Tasks with EzFilter contract
   const {
@@ -137,9 +143,9 @@ export default function DashboardPage() {
 
   if (authLoading || (!isAuthenticated && !user)) {
     return (
-      <div className="min-h-screen bg-[#090d16] flex items-center justify-center text-slate-400">
+      <div className="min-h-screen bg-background bg-ambient flex items-center justify-center text-muted">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <span className="text-xs font-mono">Authenticating with NodeWave API...</span>
         </div>
       </div>
@@ -165,23 +171,29 @@ export default function DashboardPage() {
     refetchMetrics();
   };
 
+  const isReady = !projectsLoading && !projectsError && !tasksLoading && !tasksError;
+
   return (
-    <div className="min-h-screen bg-[#090d16] flex flex-col text-slate-100">
+    <div className="min-h-screen bg-background bg-ambient flex flex-col text-foreground">
       {/* 1-Click Role Switcher for instant assessor testing */}
       <RoleSwitcherBanner />
 
-      {/* Primary Navigation Bar */}
-      <Navbar
+      <AppShell
+        projects={projects}
+        activeProjectId={currentProject?.id}
+        onSelectProject={setActiveProjectId}
         activeView={activeView}
-        setActiveView={setActiveView}
+        onViewChange={setActiveView}
         onOpenStandup={() => setIsStandupModalOpen(true)}
-        projectName={currentProject?.name}
-        projectKey={currentProject?.key}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
-        {projectsLoading && <LoadingState label="Loading deliverable workspace..." />}
+        userRole={user?.role}
+      >
+        {projectsLoading && (
+          <div className="space-y-4">
+            <div className="h-28 rounded-xl border border-border bg-surface/60">
+              <BoardSkeleton />
+            </div>
+          </div>
+        )}
 
         {!projectsLoading && projectsError && (
           <ErrorState
@@ -191,9 +203,10 @@ export default function DashboardPage() {
           />
         )}
 
-        {!projectsLoading && !projectsError && tasksLoading && (
-          <LoadingState label="Loading deliverables..." />
-        )}
+        {!projectsLoading &&
+          !projectsError &&
+          tasksLoading &&
+          (activeView === "board" ? <BoardSkeleton /> : <TableSkeleton />)}
 
         {!projectsLoading && !projectsError && tasksError && (
           <ErrorState
@@ -207,70 +220,58 @@ export default function DashboardPage() {
         )}
 
         {/* View 1: Client Guest Dedicated Portal */}
-        {!projectsLoading && !projectsError && !tasksLoading && !tasksError && (
-          <>
-            {user?.role === "CLIENT" && metricsLoading && (
-              <LoadingState label="Loading project metrics..." />
-            )}
+        {isReady && user?.role === "CLIENT" && metricsLoading && (
+          <div className="animate-in">
+            <BoardSkeleton />
+          </div>
+        )}
 
-            {user?.role === "CLIENT" && metricsError && (
-              <ErrorState
-                title="Failed to load project metrics"
-                message="The NodeWave API could not be reached. Please try again."
-                onRetry={handleRetry}
-              />
-            )}
+        {isReady && user?.role === "CLIENT" && metricsError && (
+          <ErrorState
+            title="Failed to load project metrics"
+            message="The NodeWave API could not be reached. Please try again."
+            onRetry={handleRetry}
+          />
+        )}
 
-            {user?.role === "CLIENT" && !metricsLoading && !metricsError && (
-              <ClientPortalView
-                metrics={metrics}
-                tasks={tasks}
-                projectName={currentProject?.name}
-                projectKey={currentProject?.key}
-                onSelectTask={setSelectedTask}
-              />
-            )}
-          </>
+        {isReady && user?.role === "CLIENT" && !metricsLoading && !metricsError && (
+          <ClientPortalView
+            metrics={metrics}
+            tasks={tasks}
+            projectName={currentProject?.name}
+            projectKey={currentProject?.key}
+            onSelectTask={setSelectedTask}
+          />
         )}
 
         {/* View 2: Internal Team & PM Kanban Board */}
-        {!projectsLoading &&
-          !projectsError &&
-          !tasksLoading &&
-          !tasksError &&
-          user?.role !== "CLIENT" &&
-          activeView === "board" && (
-            <TaskBoard
-              tasks={tasks}
-              userRole={user?.role}
-              onSelectTask={setSelectedTask}
-              onOpenCreateModal={() => setIsCreateModalOpen(true)}
-            />
-          )}
+        {isReady && user?.role !== "CLIENT" && activeView === "board" && (
+          <TaskBoard
+            tasks={tasks}
+            userRole={user?.role}
+            onSelectTask={setSelectedTask}
+            onOpenCreateModal={() => setIsCreateModalOpen(true)}
+          />
+        )}
 
         {/* View 3: Internal Team & PM Standard EzFilter Table */}
-        {!projectsLoading &&
-          !projectsError &&
-          !tasksLoading &&
-          !tasksError &&
-          user?.role !== "CLIENT" &&
-          activeView === "table" && (
-            <TaskTable
-              tasks={tasks}
-              onSelectTask={setSelectedTask}
-              page={tablePage}
-              rows={tableRows}
-              total={meta.total}
-              onPageChange={setTablePage}
-              onRowsChange={setTableRows}
-              onSortChange={handleSortChange}
-              searchFilter={searchFilter}
-              onSearchChange={setSearchFilter}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-            />
-          )}
-      </main>
+        {isReady && user?.role !== "CLIENT" && activeView === "table" && (
+          <TaskTable
+            tasks={tasks}
+            onSelectTask={setSelectedTask}
+            page={tablePage}
+            rows={tableRows}
+            total={meta.total}
+            onPageChange={setTablePage}
+            onRowsChange={setTableRows}
+            onSortChange={handleSortChange}
+            searchFilter={searchFilter}
+            onSearchChange={setSearchFilter}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+          />
+        )}
+      </AppShell>
 
       {/* Task Detail Drawer */}
       {selectedTask && (

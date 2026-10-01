@@ -1,24 +1,29 @@
 "use client";
 
-import { LayoutGrid, LogOut, Sparkles, Table as TableIcon } from "lucide-react";
-import Link from "next/link";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Check, ChevronDown, LogOut, Menu, Sparkles, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../stores/auth-store";
+import type { Project } from "../types";
+import { BrandLogo } from "./brand-logo";
+import { ThemeToggle } from "./theme-toggle";
+import { Badge } from "./ui/badge";
+import { Tooltip } from "./ui/tooltip";
 
 interface NavbarProps {
-  activeView: "board" | "table";
-  setActiveView: (view: "board" | "table") => void;
+  projects: Project[];
+  activeProjectId?: string;
+  onSelectProject: (id: string) => void;
   onOpenStandup: () => void;
-  projectName?: string;
-  projectKey?: string;
+  onOpenMobileSidebar: () => void;
 }
 
 export function Navbar({
-  activeView,
-  setActiveView,
+  projects,
+  activeProjectId,
+  onSelectProject,
   onOpenStandup,
-  projectName = "Enterprise Deliverable Engine",
-  projectKey = "NW-CORE",
+  onOpenMobileSidebar,
 }: NavbarProps) {
   const { user, logout } = useAuthStore();
   const router = useRouter();
@@ -28,111 +33,139 @@ export function Navbar({
     router.push("/login");
   };
 
+  const activeProject = projects.find((p) => p.id === activeProjectId) ?? projects[0];
+
   const getRoleBadge = () => {
     if (!user) return null;
     if (user.role === "PM") {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-          PM · Product Lead
-        </span>
-      );
+      return <Badge variant="deep">PM · Product Lead</Badge>;
     }
     if (user.role === "CLIENT") {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-          Client Guest · Multi-Tenant
-        </span>
-      );
+      return <Badge variant="warning">Client Guest</Badge>;
     }
-    return (
-      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-        Engineer · {user.department}
-      </span>
-    );
+    return <Badge variant="primary">Engineer · {user.department}</Badge>;
   };
 
-  return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-[#090d16]/85 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        {/* Brand & Project Info */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
-              NW
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                NodeWave
-                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-1.5 py-0.2 rounded border border-cyan-800/50">
-                  DeliverableOS
-                </span>
-              </span>
-              <span className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">
-                {projectName} ({projectKey})
-              </span>
-            </div>
-          </Link>
+  const initials = (user?.name || "?")
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
-          {/* View Toggles (Kanban vs Table) - hidden for client guest */}
+  return (
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/85 backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3 px-4 h-14">
+        {/* Left: mobile menu + brand + project switcher */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={onOpenMobileSidebar}
+            className="md:hidden p-2 rounded-lg border border-border text-muted hover:text-foreground transition-colors"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-4 h-4" strokeWidth={1.5} />
+          </button>
+
+          <BrandLogo />
+
           {user?.role !== "CLIENT" && (
-            <div className="hidden sm:flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 ml-4">
-              <button
-                onClick={() => setActiveView("board")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeView === "board"
-                    ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Task Board</span>
-              </button>
-              <button
-                onClick={() => setActiveView("table")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeView === "table"
-                    ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span>EzFilter Table</span>
-              </button>
-            </div>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button className="hidden sm:flex items-center gap-2 ml-4 pl-4 border-l border-border text-left group">
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary-tint transition-colors truncate max-w-[160px]">
+                      {activeProject?.name}
+                    </span>
+                    <span className="text-[10px] font-mono text-faint">{activeProject?.key}</span>
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-faint group-hover:text-primary transition-transform" />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="start"
+                  sideOffset={8}
+                  className="z-50 w-64 rounded-xl border border-border-strong glass bg-surface p-1.5 shadow-glow animate-in-scale"
+                >
+                  <DropdownMenu.Label className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-faint">
+                    Projects
+                  </DropdownMenu.Label>
+                  {projects.map((p) => (
+                    <DropdownMenu.Item
+                      key={p.id}
+                      onSelect={() => onSelectProject(p.id)}
+                      className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground outline-none cursor-pointer hover:bg-surface-raised data-[highlighted]:bg-surface-raised transition-colors"
+                    >
+                      <span className="flex flex-col leading-tight min-w-0">
+                        <span className="truncate">{p.name}</span>
+                        <span className="text-[10px] font-mono text-faint">{p.key}</span>
+                      </span>
+                      {p.id === (activeProject?.id ?? projects[0]?.id) && (
+                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                      )}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           )}
         </div>
 
-        {/* Right side actions */}
-        <div className="flex items-center gap-3">
-          {/* Standup summary trigger (only for internal & PM) */}
+        {/* Right: standup, theme, role, user menu */}
+        <div className="flex items-center gap-2">
           {user?.role !== "CLIENT" && (
-            <button
-              onClick={onOpenStandup}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-all shadow-sm"
-              title="View daily standup auto-summary per department"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden md:inline">Standup Auto-Summary</span>
-            </button>
+            <Tooltip content="Daily standup auto-summary per department">
+              <button
+                onClick={onOpenStandup}
+                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold text-primary-tint bg-primary/10 hover:bg-primary/20 border border-primary/25 transition-all duration-200"
+              >
+                <Sparkles className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span>Standup Summary</span>
+              </button>
+            </Tooltip>
           )}
 
-          {/* User badge */}
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-            {getRoleBadge()}
+          <ThemeToggle />
 
-            <div className="hidden lg:flex flex-col text-right">
-              <span className="text-xs font-semibold text-slate-200">{user?.name}</span>
-              <span className="text-[10px] text-slate-400 font-mono">{user?.email}</span>
-            </div>
+          <div className="hidden sm:block">{getRoleBadge()}</div>
 
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button className="flex items-center gap-2 pl-2 border-l border-border outline-none group">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-tr from-deep to-primary text-white text-[11px] font-bold shadow-glow">
+                  {initials}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-faint hidden sm:block group-hover:text-foreground transition-colors" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={8}
+                className="z-50 w-60 rounded-xl border border-border-strong glass bg-surface p-1.5 shadow-glow animate-in-scale"
+              >
+                <div className="px-2.5 py-2 border-b border-border mb-1.5">
+                  <p className="text-xs font-bold text-foreground truncate">{user?.name}</p>
+                  <p className="text-[10px] font-mono text-faint truncate">{user?.email}</p>
+                </div>
+                <DropdownMenu.Item
+                  disabled
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-muted outline-none"
+                >
+                  <UserIcon className="w-3.5 h-3.5" />
+                  {user?.role} · {user?.department}
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="h-px bg-border my-1.5" />
+                <DropdownMenu.Item
+                  onSelect={handleLogout}
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-danger outline-none cursor-pointer hover:bg-danger/10 data-[highlighted]:bg-danger/10 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
       </div>
     </header>

@@ -1,64 +1,230 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   NodeWave Design Tokens — CSS-first config (Tailwind 4)
+   Dark-first (brand default), full light theme via [data-theme="light"].
+   Components must reference these tokens only — no inline hex values.
+--------------------------------------------------------------------------- */
+
+@theme inline {
+  /* Surfaces */
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-overlay: var(--overlay);
+
+  /* Lines */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  /* Text */
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted-foreground);
+  --color-faint: var(--faint);
+
+  /* Brand */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-tint: var(--primary-tint);
+  --color-deep: var(--deep);
+
+  /* Semantic (desaturated to sit well on dark) */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  /* Typography */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+
+  /* Depth */
+  --shadow-soft: 0 1px 2px rgba(2, 8, 23, 0.06), 0 8px 24px -12px rgba(2, 8, 23, 0.12);
+  --shadow-glow: 0 0 0 1px rgba(127, 211, 240, 0.08), 0 8px 40px -8px rgba(42, 169, 222, 0.25);
+}
+
+/* ------------------------------- Dark (default) ------------------------------ */
 :root {
-  --background: #090d16;
-  --foreground: #f1f5f9;
-  --card: #0f172a;
-  --card-border: rgba(255, 255, 255, 0.08);
-  --primary: #38bdf8;
-  --primary-hover: #0ea5e9;
-  --accent: #6366f1;
+  --background: #050a14;
+  --surface: #0a1220;
+  --surface-raised: #0f1b2e;
+  --overlay: rgba(3, 7, 15, 0.72);
+
+  --border: rgba(148, 178, 214, 0.14);
+  --border-strong: rgba(148, 178, 214, 0.28);
+
+  --foreground: #e8eef7;
+  --muted-foreground: #8ca3bf;
+  --faint: #5c6f88;
+
+  --primary: #2aa9de;
+  --primary-hover: #4cbae8;
+  --primary-tint: #7fd3f0;
+  --deep: #0b4f8f;
+
+  --success: #34c08e;
+  --warning: #f0b45f;
+  --danger: #e5484d;
+  --info: #2aa9de;
+
+  --font-jakarta: var(--font-jakarta-sans);
+
+  color-scheme: dark;
+}
+
+/* ------------------------------- Light -------------------------------------- */
+[data-theme="light"] {
+  --background: #f7f9fb;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --overlay: rgba(10, 18, 32, 0.4);
+
+  --border: rgba(14, 27, 44, 0.12);
+  --border-strong: rgba(14, 27, 44, 0.24);
+
+  --foreground: #0e1b2c;
+  --muted-foreground: #55677f;
+  --faint: #8a9bb0;
+
+  --primary: #1d8bc4;
+  --primary-hover: #166f9e;
+  --primary-tint: #2aa9de;
+  --deep: #0b4f8f;
+
+  --success: #17855c;
+  --warning: #b45309;
+  --danger: #c62f36;
+  --info: #1d8bc4;
+
+  color-scheme: light;
+}
+
+/* ------------------------------- Base --------------------------------------- */
+* {
+  border-color: var(--border);
+}
+
+html {
+  height: 100%;
 }
 
 body {
+  min-height: 100%;
   background-color: var(--background);
   color: var(--foreground);
-  min-height: 100vh;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv11";
   -webkit-font-smoothing: antialiased;
+  transition: background-color 200ms ease-out, color 200ms ease-out;
 }
 
-/* Custom sleek scrollbar */
+::selection {
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+  color: var(--primary-tint);
+}
+
+/* Focus ring in brand cyan — visible, keyboard-first */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Tabular numbers for metrics & versions */
+.tabular-nums,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--border-strong);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--faint);
 }
 
-/* Glassmorphism utility */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.75);
+/* ------------------------------- Custom utilities ---------------------------- */
+/* Subtle blue radial glow — NodeWave ambient lighting */
+@utility bg-ambient {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -10%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 85% 15%, color-mix(in oklab, var(--deep) 18%, transparent), transparent 70%);
+}
+
+/* Gradient accent for hero text & key numbers: light cyan -> mid blue */
+@utility text-gradient {
+  background-image: linear-gradient(100deg, var(--primary-tint) 0%, var(--primary) 55%, var(--deep) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Glass surface — overlays only (dialogs, popovers) */
+@utility glass {
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.glass-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+/* Card hover: soft inner glow instead of shadow in dark mode */
+@utility card-hover {
+  transition: border-color 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
 }
 
-.glass-card:hover {
-  border-color: rgba(56, 189, 248, 0.3);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+/* ------------------------------- Motion -------------------------------------- */
+@keyframes nw-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(56, 189, 248, 0.25);
+@keyframes nw-fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.glow-rose {
-  box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.3);
+@keyframes nw-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.animate-in {
+  animation: nw-fade-in 200ms ease-out both;
+}
+
+.animate-in-scale {
+  animation: nw-fade-in-scale 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

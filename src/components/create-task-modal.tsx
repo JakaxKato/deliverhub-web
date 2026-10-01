@@ -1,10 +1,13 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Check, Layers, X } from "lucide-react";
+import { AlertCircle, Check, Layers, Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { api, getApiErrorMessage } from "../lib/api";
+import { toast } from "../stores/toast-store";
 import type { Department, Priority, Task } from "../types";
+import { Button } from "./ui/button";
+import { FieldLabel, Input, Textarea } from "./ui/input";
 
 interface CreateTaskModalProps {
   projectId: string;
@@ -48,6 +51,7 @@ export function CreateTaskModal({
       setDescription("");
       setSelectedPrereqIds([]);
       onClose();
+      toast({ variant: "success", title: "Deliverable created" });
     },
     onError: (err) => {
       setErrorMessage(getApiErrorMessage(err, "Failed to create deliverable."));
@@ -63,63 +67,62 @@ export function CreateTaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-xl rounded-2xl border border-slate-700/80 bg-[#0f172a] p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-md p-4 animate-in">
+      <div className="w-full max-w-xl rounded-2xl border border-border glass bg-surface p-6 shadow-glow space-y-5 animate-in-scale">
+        <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <Layers className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/25">
+              <Layers className="w-5 h-5" strokeWidth={1.5} />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Create New Deliverable</h3>
-              <p className="text-xs text-slate-400">Add a project task with dependencies</p>
+              <h3 className="text-base font-bold text-foreground">Create New Deliverable</h3>
+              <p className="text-xs text-faint">Add a project task with dependencies</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1 rounded-lg text-faint hover:text-foreground hover:bg-surface-raised transition-colors"
+            aria-label="Close create task modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
 
         {errorMessage && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-xl bg-danger/10 border border-danger/25 text-danger text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
             <span>{errorMessage}</span>
           </div>
         )}
 
         <div className="space-y-4 text-xs">
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Title *</label>
-            <input
+            <FieldLabel>Title *</FieldLabel>
+            <Input
               type="text"
               placeholder="e.g. Design Payment Checkout Flow"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Description</label>
-            <textarea
+            <FieldLabel>Description</FieldLabel>
+            <Textarea
               placeholder="Describe deliverables and acceptance criteria..."
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Department</label>
+              <FieldLabel>Department</FieldLabel>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value as Department)}
-                className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="PRODUCT">Product Management</option>
                 <option value="UIUX">UI/UX Design</option>
@@ -129,11 +132,11 @@ export function CreateTaskModal({
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Priority</label>
+              <FieldLabel>Priority</FieldLabel>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
-                className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -145,38 +148,46 @@ export function CreateTaskModal({
 
           {/* Prerequisite Selection */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">
-              Prerequisite Dependencies (Optional)
-            </label>
-            <p className="text-[11px] text-slate-400 mb-2">
+            <FieldLabel>Prerequisite Dependencies (Optional)</FieldLabel>
+            <p className="text-[11px] text-faint mb-2">
               If selected, this task will be automatically BLOCKED until these prerequisites are
               DONE.
             </p>
-            <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-background/60 border border-border">
               {existingTasks.length === 0 && (
-                <div className="text-center text-slate-500 py-2">No other tasks to depend on.</div>
+                <div className="text-center text-faint py-2">No other tasks to depend on.</div>
               )}
               {existingTasks.map((t) => {
                 const isSelected = selectedPrereqIds.includes(t.id);
                 return (
+                  // biome-ignore lint/a11y/useSemanticElements: selection row contains a custom checkbox visual, not a form control
                   <div
                     key={t.id}
                     onClick={() => togglePrereq(t.id)}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        togglePrereq(t.id);
+                      }
+                    }}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                       isSelected
-                        ? "bg-cyan-500/15 border border-cyan-500/30 text-cyan-200"
-                        : "hover:bg-slate-800/60 text-slate-300"
+                        ? "bg-primary/10 border border-primary/30 text-foreground"
+                        : "hover:bg-surface-raised/60 text-muted"
                     }`}
                   >
                     <span className="truncate pr-2">
-                      <strong className="font-mono text-cyan-400">[{t.taskCode}]</strong> {t.title}
+                      <strong className="font-mono text-primary-tint">[{t.taskCode}]</strong>{" "}
+                      {t.title}
                     </span>
                     <div
-                      className={`w-4 h-4 rounded flex items-center justify-center border ${
-                        isSelected ? "bg-cyan-500 border-cyan-400 text-white" : "border-slate-700"
+                      className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                        isSelected ? "bg-primary border-primary text-white" : "border-border"
                       }`}
                     >
-                      {isSelected && <Check className="w-3 h-3" />}
+                      {isSelected && <Check className="w-3 h-3" strokeWidth={2} />}
                     </div>
                   </div>
                 );
@@ -191,28 +202,31 @@ export function CreateTaskModal({
               id="clientVisible"
               checked={isClientVisible}
               onChange={(e) => setIsClientVisible(e.target.checked)}
-              className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-cyan-400 w-4 h-4 cursor-pointer"
+              className="rounded bg-surface-raised border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
             />
-            <label htmlFor="clientVisible" className="text-slate-300 cursor-pointer">
+            <label htmlFor="clientVisible" className="text-muted cursor-pointer">
               Publish as Client-Visible Deliverable (Identities automatically masked)
             </label>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800"
-          >
+        <div className="flex justify-end gap-3 pt-3 border-t border-border">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => createTaskMutation.mutate()}
             disabled={!title || createTaskMutation.isPending}
-            className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 transition-all shadow-md shadow-cyan-500/20"
           >
+            {createTaskMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Layers className="w-4 h-4" strokeWidth={1.5} />
+            )}
             {createTaskMutation.isPending ? "Creating..." : "Create Deliverable"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

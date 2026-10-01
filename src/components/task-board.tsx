@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, ListTodo, Lock, Plus, RefreshCw, Search } from "lu
 import { useState } from "react";
 import { api, getApiErrorMessage } from "../lib/api";
 import { useConflictStore } from "../stores/conflict-store";
+import { toast } from "../stores/toast-store";
 import type { Role, Task } from "../types";
 import { TaskCard } from "./task-card";
 import { EmptyState } from "./ui-states";
@@ -24,7 +25,7 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [selectedPriority, setSelectedPriority] = useState<string>("ALL");
 
-  // Mutation: Update status
+  // Mutation: Update status (optimistic rollback handled by query invalidation)
   const updateStatusMutation = useMutation({
     mutationFn: async ({
       taskId,
@@ -41,9 +42,19 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
       });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["metrics"] });
+      toast({
+        variant: "success",
+        title:
+          variables.newStatus === "DONE"
+            ? "Deliverable completed"
+            : variables.newStatus === "IN_PROGRESS"
+              ? "Deliverable started"
+              : "Status updated",
+        description: data?.data?.taskCode,
+      });
     },
     onError: (err) => {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -53,12 +64,17 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
           latestData: (err as { response?: { data?: { latestData?: Task } } })?.response?.data
             ?.latestData,
         });
-      } else if (status === 422) {
-        const blockedReason = (err as { response?: { data?: { blockedReason?: string } } })
-          ?.response?.data?.blockedReason;
-        alert(`Cannot start deliverable:\n${getApiErrorMessage(err)}\n${blockedReason || ""}`);
       } else {
-        alert(getApiErrorMessage(err, "Failed to update deliverable status."));
+        toast({
+          variant: "error",
+          title: "Status update failed",
+          description: getApiErrorMessage(
+            err,
+            status === 422
+              ? "This deliverable is blocked by incomplete prerequisites."
+              : "Failed to update deliverable status.",
+          ),
+        });
       }
     },
   });
@@ -92,59 +108,61 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
       count: todoTasks.length,
       tasks: todoTasks,
       icon: ListTodo,
-      borderColor: "border-slate-700",
-      badgeBg: "bg-slate-800 text-slate-300",
+      accent: "text-muted",
+      badge: "bg-surface-raised text-muted border border-border",
     },
     {
       id: "BLOCKED",
-      title: "Blocked (Dependency Guard)",
+      title: "Blocked",
       count: blockedTasks.length,
       tasks: blockedTasks,
       icon: Lock,
-      borderColor: "border-rose-500/40",
-      badgeBg: "bg-rose-500/20 text-rose-300",
+      accent: "text-danger",
+      badge: "bg-danger/10 text-danger border border-danger/25",
     },
     {
       id: "IN_PROGRESS",
-      title: "Active Deliverables",
+      title: "In Progress",
       count: inProgressTasks.length,
       tasks: inProgressTasks,
       icon: Clock,
-      borderColor: "border-cyan-500/40",
-      badgeBg: "bg-cyan-500/20 text-cyan-300",
+      accent: "text-primary",
+      badge: "bg-primary/10 text-primary-tint border border-primary/25",
     },
     {
       id: "DONE",
-      title: "Completed & Verified",
+      title: "Done",
       count: doneTasks.length,
       tasks: doneTasks,
       icon: CheckCircle2,
-      borderColor: "border-emerald-500/40",
-      badgeBg: "bg-emerald-500/20 text-emerald-300",
+      accent: "text-success",
+      badge: "bg-success/10 text-success border border-success/25",
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in">
       {/* Control Bar: Search & Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-[#0f172a]/60 border border-slate-800 backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-surface/60 border border-border backdrop-blur-md">
         <div className="flex items-center flex-1 min-w-[260px] max-w-md relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+          <Search
+            className="w-4 h-4 text-faint absolute left-3 pointer-events-none"
+            strokeWidth={1.5}
+          />
           <input
             type="text"
-            placeholder="Search deliverables by title or code (e.g. NW-CORE-001)..."
+            placeholder="Search deliverables by title or code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400 placeholder:text-slate-500"
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-background/60 border border-border text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-faint transition-colors duration-200"
           />
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
-          {/* Department Filter */}
           <select
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
-            className="rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+            className="rounded-lg bg-background/60 border border-border px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="ALL">All Departments</option>
             <option value="PRODUCT">Product</option>
@@ -153,11 +171,10 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
             <option value="BACKEND">Backend</option>
           </select>
 
-          {/* Priority Filter */}
           <select
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value)}
-            className="rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+            className="rounded-lg bg-background/60 border border-border px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="ALL">All Priorities</option>
             <option value="URGENT">Urgent</option>
@@ -166,22 +183,20 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
             <option value="LOW">Low</option>
           </select>
 
-          {/* Refresh button */}
           <button
             onClick={() => queryClient.invalidateQueries({ queryKey: ["tasks"] })}
             title="Refresh Deliverables"
-            className="p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-white transition-colors"
+            className="p-2 rounded-lg bg-background/60 border border-border text-faint hover:text-foreground hover:border-primary/50 transition-colors duration-200"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4" strokeWidth={1.5} />
           </button>
 
-          {/* Create Task Button (PM Only) */}
           {userRole === "PM" && (
             <button
               onClick={onOpenCreateModal}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white bg-gradient-to-r from-primary to-deep hover:brightness-110 shadow-glow transition-all duration-200"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" strokeWidth={1.5} />
               <span>New Deliverable</span>
             </button>
           )}
@@ -195,16 +210,16 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
           return (
             <div
               key={col.id}
-              className={`rounded-2xl bg-[#0b101d]/70 border ${col.borderColor} p-4 flex flex-col min-h-[500px] shadow-lg`}
+              className="rounded-xl bg-surface/50 border border-border p-4 flex flex-col min-h-[500px]"
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
                 <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-bold text-slate-200">{col.title}</span>
+                  <Icon className={`w-4 h-4 ${col.accent}`} strokeWidth={1.5} />
+                  <span className="text-xs font-bold text-foreground">{col.title}</span>
                 </div>
                 <span
-                  className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${col.badgeBg}`}
+                  className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${col.badge}`}
                 >
                   {col.count}
                 </span>

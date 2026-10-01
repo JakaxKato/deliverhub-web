@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
+import { BrandLogo } from "../../components/brand-logo";
+import { ThemeToggle } from "../../components/theme-toggle";
+import { Button } from "../../components/ui/button";
+import { FieldLabel, Input } from "../../components/ui/input";
 import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth-store";
 
@@ -52,7 +56,7 @@ export default function LoginPage() {
       role: "Product Manager",
       dept: "PRODUCT",
       email: "pm@nodewave.id",
-      badge: "border-purple-500/40 text-purple-400 bg-purple-500/10",
+      badge: "bg-deep/20 text-primary-tint border border-deep/40",
       desc: "Can manage tasks & dependencies. Cannot mark in-progress tasks as Done.",
     },
     {
@@ -60,7 +64,7 @@ export default function LoginPage() {
       role: "UI/UX Designer",
       dept: "UIUX",
       email: "uiux@nodewave.id",
-      badge: "border-pink-500/40 text-pink-400 bg-pink-500/10",
+      badge: "bg-info/10 text-primary-tint border border-info/25",
       desc: "Executes UI deliverable with Figma handoffs.",
     },
     {
@@ -68,7 +72,7 @@ export default function LoginPage() {
       role: "Frontend Engineer",
       dept: "FRONTEND",
       email: "fe@nodewave.id",
-      badge: "border-cyan-500/40 text-cyan-400 bg-cyan-500/10",
+      badge: "bg-info/10 text-primary-tint border border-info/25",
       desc: "Starts deliverable once UI/UX & Backend prerequisites are Done.",
     },
     {
@@ -76,7 +80,7 @@ export default function LoginPage() {
       role: "Backend Engineer",
       dept: "BACKEND",
       email: "be@nodewave.id",
-      badge: "border-emerald-500/40 text-emerald-400 bg-emerald-500/10",
+      badge: "bg-success/10 text-success border border-success/25",
       desc: "Implements core API & optimistic locking.",
     },
     {
@@ -84,43 +88,41 @@ export default function LoginPage() {
       role: "Client Guest",
       dept: "CLIENT",
       email: "client@acmecorp.com",
-      badge: "border-amber-500/40 text-amber-400 bg-amber-500/10",
+      badge: "bg-warning/10 text-warning border border-warning/25",
       desc: "Multi-tenant isolation: Only views aggregate % metrics & client deliverables.",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#090d16] flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 -left-48 w-96 h-96 bg-cyan-500/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-indigo-500/15 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-background bg-ambient flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
 
-      <div className="w-full max-w-xl space-y-6 relative z-10">
-        {/* Logo and Brand Title */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white font-black text-xl shadow-xl shadow-cyan-500/25 mb-1">
-            NW
-          </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            NodeWave Deliverable Platform
+      <div className="w-full max-w-xl space-y-6 relative z-10 animate-in">
+        {/* Brand & Headline */}
+        <div className="text-center space-y-3">
+          <BrandLogo className="justify-center" iconSize="lg" />
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gradient">
+            Deliverable Platform
           </h1>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <p className="text-xs text-muted max-w-sm mx-auto">
             State-Based Permissions, Inter-Task Dependencies & Multi-Tenant Isolation
           </p>
         </div>
 
         {/* 1-Click Demo / Evaluator Logins */}
-        <div className="rounded-2xl border border-cyan-500/30 bg-slate-900/60 p-5 backdrop-blur-xl shadow-2xl space-y-3">
+        <div className="rounded-2xl border border-primary/25 bg-surface/70 p-5 backdrop-blur-xl shadow-glow space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-bold text-white">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+              <Sparkles className="w-4 h-4 text-primary" strokeWidth={1.5} />
               <span>Assessor 1-Click Role Switcher</span>
             </div>
-            <span className="text-[10px] text-cyan-400 font-mono bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
+            <span className="text-[10px] text-primary-tint font-mono bg-deep/20 px-2 py-0.5 rounded border border-deep/40">
               Instant Session Sign-In
             </span>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             Click any role below to authenticate instantly and evaluate state rules:
           </p>
 
@@ -131,69 +133,71 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => handleQuickLogin(acc.email)}
                 disabled={submitting || isLoading}
-                className="flex flex-col text-left p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-cyan-500/40 transition-all group cursor-pointer"
+                className="flex flex-col text-left p-2.5 rounded-xl bg-surface-raised/60 hover:bg-surface-raised border border-border hover:border-primary/40 transition-all duration-200 group cursor-pointer disabled:opacity-50"
               >
                 <div className="flex items-center justify-between gap-1 w-full">
-                  <span className="text-xs font-bold text-white group-hover:text-cyan-300">
+                  <span className="text-xs font-bold text-foreground group-hover:text-primary-tint transition-colors">
                     {acc.name}
                   </span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${acc.badge}`}>
                     {acc.role}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 truncate mt-0.5">{acc.desc}</span>
+                <span className="text-[10px] text-faint truncate mt-0.5">{acc.desc}</span>
               </button>
             ))}
           </div>
         </div>
 
         {/* Traditional Credentials Login Box */}
-        <div className="rounded-2xl border border-slate-800 bg-[#0f172a]/70 p-6 backdrop-blur-xl shadow-xl space-y-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="rounded-2xl border border-border bg-surface/70 p-6 backdrop-blur-xl shadow-glow space-y-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-faint">
             <span>Or Sign In with Email</span>
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-danger/10 border border-danger/25 text-danger text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
               <span>{errorMsg}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Email Address</label>
+              <FieldLabel>Email Address</FieldLabel>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                <input
+                <Mail
+                  className="w-4 h-4 text-faint absolute left-3 top-2.5 pointer-events-none"
+                  strokeWidth={1.5}
+                />
+                <Input
                   type="email"
                   placeholder="pm@nodewave.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Password</label>
+              <FieldLabel>Password</FieldLabel>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                <input
+                <Lock
+                  className="w-4 h-4 text-faint absolute left-3 top-2.5 pointer-events-none"
+                  strokeWidth={1.5}
+                />
+                <Input
                   type="password"
                   placeholder="Password123!"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="pl-9"
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 cursor-pointer"
-            >
+            <Button type="submit" className="w-full" disabled={submitting} loading={submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -202,15 +206,15 @@ export default function LoginPage() {
               ) : (
                 <>
                   <span>Sign In to Platform</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
-          <div className="pt-2 text-center text-xs text-slate-400">
+          <div className="pt-2 text-center text-xs text-muted">
             {"Don't have an account? "}
-            <Link href="/register" className="text-cyan-400 hover:underline font-semibold">
+            <Link href="/register" className="text-primary-tint hover:underline font-semibold">
               Create an account
             </Link>
           </div>

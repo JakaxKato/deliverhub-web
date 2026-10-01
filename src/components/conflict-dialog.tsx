@@ -17,48 +17,56 @@ export function ConflictDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-2xl border border-rose-500/30 bg-[#0f172a] p-6 shadow-2xl glow-rose relative">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-4 animate-in"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="conflict-title"
+    >
+      <div className="w-full max-w-lg rounded-2xl border border-danger/30 glass bg-surface p-6 shadow-glow animate-in-scale relative">
         <button
           onClick={closeConflict}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+          aria-label="Close conflict dialog"
+          className="absolute top-4 right-4 text-faint hover:text-foreground transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5" strokeWidth={1.5} />
         </button>
 
         <div className="flex items-start gap-4 mb-4">
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
-            <ShieldAlert className="w-7 h-7" />
+          <div className="p-3 rounded-xl bg-danger/10 border border-danger/25 text-danger">
+            <ShieldAlert className="w-7 h-7" strokeWidth={1.5} />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              409 Conflict: Optimistic Lock Rejection
+            <h3 id="conflict-title" className="text-xl font-bold text-foreground">
+              This task was updated by someone else
             </h3>
-            <p className="text-sm text-slate-400 mt-1">Race Condition Prevention Triggered</p>
+            <p className="text-sm text-muted mt-1">
+              Your changes were safely paused to prevent overwriting their work.
+            </p>
           </div>
         </div>
 
-        <div className="space-y-3 text-sm text-slate-300 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+        <div className="space-y-3 text-sm text-muted bg-background/50 p-4 rounded-xl border border-border">
           <p>
             {message ||
-              "Another user modified this deliverable at the exact same moment. Your changes were safely paused to prevent overwriting their work."}
+              "Another user modified this deliverable at the exact same moment. Nothing was silently overwritten."}
           </p>
 
           {latestData && (
-            <div className="mt-3 pt-3 border-t border-slate-800 text-xs space-y-1">
-              <div className="text-slate-400 font-semibold uppercase tracking-wider">
-                Current Server State:
+            <div className="mt-3 pt-3 border-t border-border text-xs space-y-1.5">
+              <div className="text-faint font-semibold uppercase tracking-wider">
+                Current server state
               </div>
-              <div className="text-slate-300">
-                <span className="text-slate-400">Status: </span>
-                <span className="font-mono text-cyan-400">{latestData.status}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-faint">Status:</span>
+                <span className="font-mono text-primary-tint">{latestData.status}</span>
               </div>
-              <div className="text-slate-300">
-                <span className="text-slate-400">Latest Version: </span>
-                <span className="font-mono text-amber-400">v{latestData.version}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-faint">Latest Version:</span>
+                <span className="font-mono text-warning">v{latestData.version}</span>
               </div>
-              <div className="text-slate-300 truncate">
-                <span className="text-slate-400">Last Modified: </span>
+              <div className="flex items-center gap-2">
+                <span className="text-faint">Last Modified:</span>
                 <span>{new Date(latestData.updatedAt).toLocaleTimeString()}</span>
               </div>
             </div>
@@ -68,15 +76,15 @@ export function ConflictDialog() {
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={closeConflict}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:text-foreground hover:bg-surface-raised transition-colors duration-200"
           >
-            Cancel
+            Keep My View
           </button>
           <button
             onClick={handleRefreshAndClose}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition-all"
+            className="px-4 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-primary to-deep hover:brightness-110 shadow-glow flex items-center gap-2 transition-all duration-200"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4" strokeWidth={1.5} />
             Reload Latest Version
           </button>
         </div>

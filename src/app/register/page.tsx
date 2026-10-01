@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
+import { BrandLogo } from "../../components/brand-logo";
+import { ThemeToggle } from "../../components/theme-toggle";
+import { Button } from "../../components/ui/button";
+import { FieldLabel, Input } from "../../components/ui/input";
 import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth-store";
 import type { Department, Role } from "../../types";
@@ -48,78 +52,86 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090d16] flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      <div className="absolute top-1/4 -left-48 w-96 h-96 bg-cyan-500/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-indigo-500/15 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-background bg-ambient flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
 
-      <div className="w-full max-w-md space-y-6 relative z-10">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white font-black text-xl shadow-xl shadow-cyan-500/25 mb-1">
-            NW
-          </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+      <div className="w-full max-w-md space-y-6 relative z-10 animate-in">
+        <div className="text-center space-y-3">
+          <BrandLogo className="justify-center" iconSize="lg" />
+          <h1 className="text-2xl font-extrabold tracking-tight text-gradient">
             Create Platform Account
           </h1>
-          <p className="text-xs text-slate-400">Join the operational deliverable backbone team</p>
+          <p className="text-xs text-muted">Join the operational deliverable backbone team</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-[#0f172a]/70 p-6 backdrop-blur-xl shadow-2xl space-y-4">
+        <div className="rounded-2xl border border-border bg-surface/70 p-6 backdrop-blur-xl shadow-glow space-y-4">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-danger/10 border border-danger/25 text-danger text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
               <span>{errorMsg}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Full Name</label>
+              <FieldLabel>Full Name</FieldLabel>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                <input
+                <User
+                  className="w-4 h-4 text-faint absolute left-3 top-2.5 pointer-events-none"
+                  strokeWidth={1.5}
+                />
+                <Input
                   type="text"
                   required
                   placeholder="e.g. David Chen"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Email Address</label>
+              <FieldLabel>Email Address</FieldLabel>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                <input
+                <Mail
+                  className="w-4 h-4 text-faint absolute left-3 top-2.5 pointer-events-none"
+                  strokeWidth={1.5}
+                />
+                <Input
                   type="email"
                   required
                   placeholder="name@nodewave.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Password</label>
+              <FieldLabel>Password</FieldLabel>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                <input
+                <Lock
+                  className="w-4 h-4 text-faint absolute left-3 top-2.5 pointer-events-none"
+                  strokeWidth={1.5}
+                />
+                <Input
                   type="password"
                   required
                   placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Platform Role</label>
+                <FieldLabel>Platform Role</FieldLabel>
                 <select
                   value={role}
                   onChange={(e) => {
@@ -128,7 +140,7 @@ export default function RegisterPage() {
                     if (r === "CLIENT") setDepartment("CLIENT");
                     else if (r === "PM") setDepartment("PRODUCT");
                   }}
-                  className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="MEMBER">Internal Engineer</option>
                   <option value="PM">Product Manager</option>
@@ -137,12 +149,12 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Department</label>
+                <FieldLabel>Department</FieldLabel>
                 <select
                   value={department}
                   onChange={(e) => setDepartment(e.target.value as Department)}
                   disabled={role === "CLIENT"}
-                  className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-400 disabled:opacity-50"
+                  className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 >
                   <option value="FRONTEND">Frontend</option>
                   <option value="BACKEND">Backend</option>
@@ -153,10 +165,11 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
+              className="w-full mt-2"
               disabled={submitting}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              loading={submitting}
             >
               {submitting ? (
                 <>
@@ -166,15 +179,15 @@ export default function RegisterPage() {
               ) : (
                 <>
                   <span>Register Account</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
-          <div className="pt-2 text-center text-xs text-slate-400">
+          <div className="pt-2 text-center text-xs text-muted">
             Already have an account?{" "}
-            <Link href="/login" className="text-cyan-400 hover:underline font-semibold">
+            <Link href="/login" className="text-primary-tint hover:underline font-semibold">
               Sign In
             </Link>
           </div>
