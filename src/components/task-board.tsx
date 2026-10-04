@@ -1,50 +1,46 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, ListTodo, Lock, Plus, RefreshCw, Search } from "lucide-react";
 import { useState } from "react";
-import { api, getApiErrorMessage } from "../lib/api";
-import { useConflictStore } from "../stores/conflict-store";
+import { getApiErrorMessage } from "../lib/api";
+import { useSessionMutation } from "../lib/session-mutation";
+import { isSilentTaskError, taskApi } from "../lib/task-api";
+import { getTaskActions } from "../lib/task-permissions";
 import { toast } from "../stores/toast-store";
-import type { Role, Task } from "../types";
+import type { Task, TaskStatus, User } from "../types";
 import { TaskCard } from "./task-card";
 import { EmptyState } from "./ui-states";
 
 interface TaskBoardProps {
   tasks: Task[];
-  userRole?: Role;
+  user: User;
   onSelectTask: (task: Task) => void;
   onOpenCreateModal: () => void;
 }
 
-export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: TaskBoardProps) {
+export function TaskBoard({ tasks, user, onSelectTask, onOpenCreateModal }: TaskBoardProps) {
   const queryClient = useQueryClient();
-  const { openConflict } = useConflictStore();
+  const userRole = user.role;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [selectedPriority, setSelectedPriority] = useState<string>("ALL");
 
-  // Mutation: Update status (optimistic rollback handled by query invalidation)
-  const updateStatusMutation = useMutation({
+  // Backend permissions are authoritative; stale writes use the shared conflict handler.
+  const updateStatusMutation = useSessionMutation({
     mutationFn: async ({
       taskId,
       newStatus,
       version,
     }: {
       taskId: string;
-      newStatus: string;
+      newStatus: TaskStatus;
       version: number;
     }) => {
-      const res = await api.patch(`/tasks/${taskId}/status`, {
-        status: newStatus,
-        version,
-      });
-      return res.data;
+      return taskApi.updateStatus(taskId, { status: newStatus, version });
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["metrics"] });
       toast({
         variant: "success",
         title:
@@ -57,30 +53,31 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
       });
     },
     onError: (err) => {
+      if (isSilentTaskError(err)) return;
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        openConflict({
-          message: getApiErrorMessage(err, "Concurrency conflict."),
-          latestData: (err as { response?: { data?: { latestData?: Task } } })?.response?.data
-            ?.latestData,
-        });
-      } else {
-        toast({
-          variant: "error",
-          title: "Status update failed",
-          description: getApiErrorMessage(
-            err,
-            status === 422
-              ? "This deliverable is blocked by incomplete prerequisites."
-              : "Failed to update deliverable status.",
-          ),
-        });
-      }
+      toast({
+        variant: "error",
+        title: "Status update failed",
+        description: getApiErrorMessage(
+          err,
+          status === 422
+            ? "This deliverable is blocked by incomplete prerequisites."
+            : "Failed to update deliverable status.",
+        ),
+      });
     },
   });
 
-  const handleUpdateStatus = (taskId: string, newStatus: string, version: number) => {
-    updateStatusMutation.mutate({ taskId, newStatus, version });
+  const handleUpdateStatus = (taskId: string, newStatus: TaskStatus, version: number) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task || updateStatusMutation.isPending) return;
+    const actions = getTaskActions(task, user);
+    if (
+      (newStatus === "IN_PROGRESS" && actions.canStart) ||
+      (newStatus === "DONE" && actions.canComplete)
+    ) {
+      updateStatusMutation.mutate({ taskId, newStatus, version });
+    }
   };
 
   // Filter tasks based on search & filters
@@ -242,7 +239,7 @@ export function TaskBoard({ tasks, userRole, onSelectTask, onOpenCreateModal }: 
                   <TaskCard
                     key={task.id}
                     task={task}
-                    userRole={userRole}
+                    user={user}
                     onSelectTask={onSelectTask}
                     onUpdateStatus={handleUpdateStatus}
                     isUpdating={updateStatusMutation.isPending}

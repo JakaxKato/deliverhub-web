@@ -1,29 +1,49 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import * as Dialog from "@radix-ui/react-dialog";
 import { RefreshCw, ShieldAlert, X } from "lucide-react";
+import { invalidateTaskQueries } from "../lib/task-api";
 import { useConflictStore } from "../stores/conflict-store";
 
-export function ConflictDialog() {
-  const { isOpen, message, latestData, closeConflict } = useConflictStore();
-  const queryClient = useQueryClient();
+type ConflictViewState = Pick<
+  ReturnType<typeof useConflictStore.getState>,
+  "isOpen" | "message" | "latestData" | "serverVersion" | "clientVersion"
+>;
 
+export function ConflictDialog() {
+  const state = useConflictStore();
+  return (
+    <ConflictDialogView
+      state={state}
+      onClose={state.closeConflict}
+      onReload={async () => {
+        await invalidateTaskQueries();
+        state.closeConflict();
+      }}
+    />
+  );
+}
+
+export function ConflictDialogView({
+  state,
+  onClose: closeConflict,
+  onReload: handleRefreshAndClose,
+}: {
+  state: ConflictViewState;
+  onClose: () => void;
+  onReload: () => Promise<unknown>;
+}) {
+  const { isOpen, message, latestData, serverVersion, clientVersion } = state;
   if (!isOpen) return null;
 
-  const handleRefreshAndClose = () => {
-    queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    queryClient.invalidateQueries({ queryKey: ["task"] });
-    closeConflict();
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-4 animate-in"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="conflict-title"
-    >
-      <div className="w-full max-w-lg rounded-2xl border border-danger/30 glass bg-surface p-6 shadow-glow animate-in-scale relative">
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && closeConflict()}>
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm" />
+      <Dialog.Content
+        role="alertdialog"
+        aria-describedby="conflict-description"
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%_-_2rem)] max-w-lg rounded-2xl border border-danger/30 glass bg-surface p-6 shadow-glow animate-in-scale"
+      >
         <button
           onClick={closeConflict}
           aria-label="Close conflict dialog"
@@ -37,12 +57,12 @@ export function ConflictDialog() {
             <ShieldAlert className="w-7 h-7" strokeWidth={1.5} />
           </div>
           <div>
-            <h3 id="conflict-title" className="text-xl font-bold text-foreground">
+            <Dialog.Title className="text-xl font-bold text-foreground">
               This task was updated by someone else
-            </h3>
-            <p className="text-sm text-muted mt-1">
+            </Dialog.Title>
+            <Dialog.Description id="conflict-description" className="text-sm text-muted mt-1">
               Your changes were safely paused to prevent overwriting their work.
-            </p>
+            </Dialog.Description>
           </div>
         </div>
 
@@ -52,6 +72,11 @@ export function ConflictDialog() {
               "Another user modified this deliverable at the exact same moment. Nothing was silently overwritten."}
           </p>
 
+          {clientVersion !== null && serverVersion !== null && (
+            <p className="text-xs font-mono">
+              Your version: v{clientVersion} · Server version: v{serverVersion}
+            </p>
+          )}
           {latestData && (
             <div className="mt-3 pt-3 border-t border-border text-xs space-y-1.5">
               <div className="text-faint font-semibold uppercase tracking-wider">
@@ -88,7 +113,7 @@ export function ConflictDialog() {
             Reload Latest Version
           </button>
         </div>
-      </div>
-    </div>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }

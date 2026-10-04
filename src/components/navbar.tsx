@@ -4,14 +4,14 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronDown, LogOut, Menu, Sparkles, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../stores/auth-store";
-import type { Project } from "../types";
+import type { ClientProject, Project } from "../types";
 import { BrandLogo } from "./brand-logo";
 import { ThemeToggle } from "./theme-toggle";
 import { Badge } from "./ui/badge";
 import { Tooltip } from "./ui/tooltip";
 
 interface NavbarProps {
-  projects: Project[];
+  projects: (Project | ClientProject)[];
   activeProjectId?: string;
   onSelectProject: (id: string) => void;
   onOpenStandup: () => void;
@@ -25,12 +25,12 @@ export function Navbar({
   onOpenStandup,
   onOpenMobileSidebar,
 }: NavbarProps) {
-  const { user, logout } = useAuthStore();
+  const { user, logout, isLoading } = useAuthStore();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/login");
   };
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? projects[0];
@@ -68,7 +68,7 @@ export function Navbar({
 
           <BrandLogo />
 
-          {user?.role !== "CLIENT" && (
+          {projects.length > 0 && (user?.role !== "CLIENT" || projects.length > 1) && (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button className="hidden sm:flex items-center gap-2 ml-4 pl-4 border-l border-border text-left group">
@@ -85,7 +85,7 @@ export function Navbar({
                 <DropdownMenu.Content
                   align="start"
                   sideOffset={8}
-                  className="z-50 w-64 rounded-xl border border-border-strong glass bg-surface p-1.5 shadow-glow animate-in-scale"
+                  className="z-50 w-64 max-h-[min(70vh,24rem)] overflow-y-auto rounded-xl border border-border-strong glass bg-surface p-1.5 shadow-glow animate-in-scale"
                 >
                   <DropdownMenu.Label className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-faint">
                     Projects
@@ -113,7 +113,7 @@ export function Navbar({
 
         {/* Right: standup, theme, role, user menu */}
         <div className="flex items-center gap-2">
-          {user?.role !== "CLIENT" && (
+          {user?.role !== "CLIENT" && activeProject && (
             <Tooltip content="Daily standup auto-summary per department">
               <button
                 onClick={onOpenStandup}
@@ -158,6 +158,7 @@ export function Navbar({
                 <DropdownMenu.Separator className="h-px bg-border my-1.5" />
                 <DropdownMenu.Item
                   onSelect={handleLogout}
+                  disabled={isLoading}
                   className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-danger outline-none cursor-pointer hover:bg-danger/10 data-[highlighted]:bg-danger/10 transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />

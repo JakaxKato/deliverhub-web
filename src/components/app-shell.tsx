@@ -2,13 +2,13 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import type { Project, Role } from "../types";
+import type { ClientProject, Project, Role } from "../types";
 import { AppSidebar } from "./app-sidebar";
 import { Navbar } from "./navbar";
 
 interface AppShellProps {
   children: ReactNode;
-  projects: Project[];
+  projects: (Project | ClientProject)[];
   activeProjectId?: string;
   onSelectProject: (id: string) => void;
   activeView: "board" | "table";
@@ -66,7 +66,7 @@ export function AppShell({
       />
 
       <div className="flex flex-1 min-h-0">
-        {userRole !== "CLIENT" && (
+        {userRole !== "CLIENT" && projects.length > 0 && (
           <AppSidebar
             items={sidebarItems}
             activeView={activeView}

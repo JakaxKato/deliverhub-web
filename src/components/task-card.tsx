@@ -1,15 +1,16 @@
 "use client";
 
 import { CheckCircle2, Clock, Eye, GitBranch, Loader2, Lock } from "lucide-react";
-import type { Role, Task, TaskPrerequisite } from "../types";
+import { getTaskActions } from "../lib/task-permissions";
+import type { Task, TaskPrerequisite, TaskStatus, User } from "../types";
 import { Badge } from "./ui/badge";
 import { Tooltip } from "./ui/tooltip";
 
 interface TaskCardProps {
   task: Task;
-  userRole?: Role;
+  user?: User;
   onSelectTask: (task: Task) => void;
-  onUpdateStatus: (taskId: string, newStatus: string, version: number) => void;
+  onUpdateStatus: (taskId: string, newStatus: TaskStatus, version: number) => void;
   isUpdating?: boolean;
 }
 
@@ -30,11 +31,13 @@ const departmentVariant = {
 
 export function TaskCard({
   task,
-  userRole,
+  user,
   onSelectTask,
   onUpdateStatus,
   isUpdating = false,
 }: TaskCardProps) {
+  const userRole = user?.role;
+  const actions = getTaskActions(task, user);
   const pendingPrereqs: TaskPrerequisite[] = task.pendingPrerequisites || [];
   const dependencyCount = task.dependencies?.length ?? task.pendingPrerequisites?.length ?? 0;
 
@@ -160,21 +163,25 @@ export function TaskCard({
       </div>
 
       {/* Quick Action Button based on State Permissions */}
-      {userRole !== "CLIENT" && (
+      {(userRole === "PM" || userRole === "MEMBER") && (
         <div className="mt-3 pt-2.5 border-t border-border" onClick={(e) => e.stopPropagation()}>
           {task.status === "TODO" && (
             <Tooltip
               content={
                 task.isBlocked
                   ? blockedTooltip
-                  : "Mark this deliverable as In Progress and start working."
+                  : actions.canStart
+                    ? "Mark this deliverable as In Progress and start working."
+                    : "Only the assigned engineer can start this deliverable."
               }
             >
               <button
-                onClick={() => onUpdateStatus(task.id, "IN_PROGRESS", task.version)}
-                disabled={isUpdating || task.isBlocked}
+                onClick={() => {
+                  if (actions.canStart) onUpdateStatus(task.id, "IN_PROGRESS", task.version);
+                }}
+                disabled={isUpdating || !actions.canStart}
                 className={`w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 ${
-                  task.isBlocked
+                  !actions.canStart
                     ? "bg-danger/5 text-danger/60 border border-danger/25 cursor-not-allowed"
                     : "bg-primary/10 hover:bg-primary/20 text-primary-tint border border-primary/30"
                 }`}
@@ -201,26 +208,36 @@ export function TaskCard({
 
           {task.status === "BLOCKED" && (
             <Tooltip content={blockedTooltip}>
-              <div className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 bg-danger/5 text-danger/60 border border-danger/25 cursor-not-allowed">
+              <button
+                type="button"
+                disabled
+                className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 bg-danger/5 text-danger/60 border border-danger/25 cursor-not-allowed"
+              >
                 <Lock className="w-3 h-3" />
                 <span>Locked: Awaiting Prerequisites</span>
-              </div>
+              </button>
             </Tooltip>
           )}
 
           {task.status === "IN_PROGRESS" && (
             <Tooltip
               content={
-                userRole === "PM"
-                  ? "Product Managers cannot mark tasks as Done — only the assigned executor can complete a deliverable."
-                  : "Mark this deliverable as Done."
+                task.isBlocked
+                  ? blockedTooltip
+                  : userRole === "PM"
+                    ? "Product Managers cannot mark tasks as Done — only the assigned executor can complete a deliverable."
+                    : actions.canComplete
+                      ? "Mark this deliverable as Done."
+                      : "Only the assigned engineer can complete this deliverable."
               }
             >
               <button
-                onClick={() => onUpdateStatus(task.id, "DONE", task.version)}
-                disabled={isUpdating || userRole === "PM"}
+                onClick={() => {
+                  if (actions.canComplete) onUpdateStatus(task.id, "DONE", task.version);
+                }}
+                disabled={isUpdating || !actions.canComplete}
                 className={`w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 ${
-                  userRole === "PM"
+                  !actions.canComplete
                     ? "bg-surface-raised text-faint border border-border cursor-not-allowed"
                     : "bg-success/10 hover:bg-success/20 text-success border border-success/30"
                 }`}

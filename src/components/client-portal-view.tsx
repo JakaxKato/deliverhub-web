@@ -1,26 +1,18 @@
 "use client";
 
-import {
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  Layers,
-  Paperclip,
-  ShieldCheck,
-  User,
-} from "lucide-react";
-import type { ProjectMetrics, Task } from "../types";
+import { CheckCircle2, Clock, ExternalLink, Layers, Paperclip, ShieldCheck } from "lucide-react";
+import type { ClientProjectMetrics, ClientTask } from "../types";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { ProgressRing } from "./ui/progress-ring";
 import { EmptyState } from "./ui-states";
 
 interface ClientPortalProps {
-  metrics?: ProjectMetrics;
-  tasks: Task[];
+  metrics?: ClientProjectMetrics;
+  tasks: ClientTask[];
   projectName?: string;
   projectKey?: string;
-  onSelectTask: (task: Task) => void;
+  onSelectTask: (task: ClientTask) => void;
 }
 
 export function ClientPortalView({
@@ -121,7 +113,7 @@ export function ClientPortalView({
             </span>
           </h2>
           <span className="hidden md:inline text-xs text-faint italic">
-            Internal identities and comments are automatically masked by the API
+            Only published deliverables are shared with this portal
           </span>
         </div>
 
@@ -200,10 +192,7 @@ export function ClientPortalView({
               )}
 
               <div className="flex items-center justify-between text-xs text-faint pt-2 border-t border-border">
-                <div className="flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" strokeWidth={1.5} />
-                  <span>{task.assignee?.name || "NodeWave Specialist"}</span>
-                </div>
+                <span>Published deliverable</span>
                 <span className="text-[11px] font-mono">
                   Updated {new Date(task.updatedAt).toLocaleDateString()}
                 </span>

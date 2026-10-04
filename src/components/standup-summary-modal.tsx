@@ -5,34 +5,38 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ClipboardList,
   Clock,
   Copy,
   FileText,
   Loader2,
   ShieldAlert,
-  Sparkles,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
+import { useAuthStore } from "../stores/auth-store";
 import type { StandupSummary } from "../types";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 
 interface StandupModalProps {
   projectId: string;
+  userId: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function StandupSummaryModal({ projectId, isOpen, onClose }: StandupModalProps) {
+export function StandupSummaryModal({ projectId, userId, isOpen, onClose }: StandupModalProps) {
+  const user = useAuthStore((state) => state.user);
+  const canView = user?.id === userId && (user.role === "PM" || user.role === "MEMBER");
   const [copied, setCopied] = useState(false);
   // Target date defaults to "yesterday" server-side; query a custom date by
   // appending ?date=YYYY-MM-DD when needed.
   const selectedDate = "";
 
   const { data, isLoading, error } = useQuery<StandupSummary>({
-    queryKey: ["standup-summary", projectId, selectedDate],
+    queryKey: ["standup-summary", "internal", userId, projectId, selectedDate],
     queryFn: async () => {
       const url = selectedDate
         ? `/audit/standup-summary/${projectId}?date=${selectedDate}`
@@ -40,10 +44,10 @@ export function StandupSummaryModal({ projectId, isOpen, onClose }: StandupModal
       const res = await api.get(url);
       return res.data.data;
     },
-    enabled: isOpen && !!projectId,
+    enabled: canView && isOpen && !!projectId,
   });
 
-  if (!isOpen) return null;
+  if (!isOpen || !canView) return null;
 
   const handleCopyMarkdown = () => {
     if (data?.markdown) {
@@ -62,13 +66,10 @@ export function StandupSummaryModal({ projectId, isOpen, onClose }: StandupModal
         <div className="p-5 border-b border-border flex items-center justify-between bg-surface-raised/40">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/25 text-primary">
-              <Sparkles className="w-5 h-5" strokeWidth={1.5} />
+              <ClipboardList className="w-5 h-5" strokeWidth={1.5} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                Daily Standup Auto-Summary
-                <Badge variant="primary">Bonus Feature</Badge>
-              </h2>
+              <h2 className="text-lg font-bold text-foreground">Daily Standup Auto-Summary</h2>
               <p className="text-xs text-faint mt-0.5">
                 Aggregated from immutable audit trails & live dependency state per department
               </p>
@@ -98,7 +99,7 @@ export function StandupSummaryModal({ projectId, isOpen, onClose }: StandupModal
             </div>
           )}
 
-          {data && (
+          {data && !error && (
             <>
               {/* Top controls: Date info & Copy button */}
               <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-surface-raised/50 border border-border">
@@ -227,7 +228,7 @@ export function StandupSummaryModal({ projectId, isOpen, onClose }: StandupModal
                                   {item.title}
                                 </div>
                                 <div className="text-[11px] text-danger/80 italic">
-                                  ⚠ {item.blockedReason}
+                                  {item.blockedReason}
                                 </div>
                               </div>
                             ))}

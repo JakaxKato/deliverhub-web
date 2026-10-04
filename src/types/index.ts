@@ -1,5 +1,7 @@
 export type Role = "PM" | "MEMBER" | "CLIENT";
 export type Department = "PRODUCT" | "UIUX" | "FRONTEND" | "BACKEND" | "CLIENT";
+export type RegistrationDepartment = "UIUX" | "FRONTEND" | "BACKEND";
+export type InternalDepartment = RegistrationDepartment;
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED";
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -37,11 +39,14 @@ export interface Project {
 export interface TaskAttachment {
   id: string;
   taskId: string;
+  uploaderId: string;
   fileName: string;
   fileUrl: string;
-  fileType?: string | null;
+  fileType: string | null;
+  fileSize: number | null;
   createdAt: string;
-  uploader?: {
+  deletedAt: string | null;
+  uploader: {
     id: string;
     name: string;
   };
@@ -73,6 +78,23 @@ export interface AuditLog {
   };
 }
 
+export interface Comment {
+  id: string;
+  taskId: string;
+  projectId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    name: string;
+    role: Role;
+    department: Department;
+    avatarUrl?: string | null;
+  };
+  canDelete: boolean;
+}
+
 export interface TaskPrerequisite {
   id: string;
   taskCode: string;
@@ -81,7 +103,18 @@ export interface TaskPrerequisite {
   department?: Department;
 }
 
+export interface TaskPermissions {
+  canEdit: boolean;
+  canStart: boolean;
+  canComplete: boolean;
+  canChangeStatus: boolean;
+  canManageDependencies: boolean;
+  canAttach: boolean;
+  canDelete: boolean;
+}
+
 export interface Task {
+  permissions: TaskPermissions;
   id: string;
   taskCode: string;
   projectId: string;
@@ -108,7 +141,83 @@ export interface Task {
   auditLogs?: AuditLog[];
 }
 
-export interface ProjectMetrics {
+export interface ClientPrerequisite {
+  id: string;
+  taskCode: string;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface ClientAttachment {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType?: string | null;
+  fileSize?: number | null;
+  createdAt: string;
+}
+
+export interface ClientTask {
+  id: string;
+  taskCode: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: Priority;
+  isClientVisible: boolean;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  attachments: ClientAttachment[];
+  dependencies: ClientPrerequisite[];
+  isBlocked: boolean;
+  blockedReason: string | null;
+  pendingPrerequisites: ClientPrerequisite[];
+}
+
+export interface ClientProject {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count: { tasks: number };
+}
+
+export interface ClientProjectMetrics {
+  projectId: string;
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  blockedTasks: number;
+  todoTasks: number;
+  percentageComplete: number;
+  percentageFormatted: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
+
+export interface ListResponse<T> extends ApiResponse<T[]> {
+  meta: { page: number; rows: number; total: number; totalPages: number };
+}
+
+export type TaskListResponse<T> = ListResponse<T>;
+
+export interface TaskConflict {
+  success: false;
+  error: "Conflict";
+  message: string;
+  latestData?: Task;
+  serverVersion: number;
+  clientVersion: number;
+}
+
+export interface ProjectMetrics extends ClientProjectMetrics {
   projectId: string;
   totalTasks: number;
   completedTasks: number;

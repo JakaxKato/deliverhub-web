@@ -189,7 +189,7 @@ export function TaskTable({
                     <div>{getStatusBadge(task.status, task.isBlocked)}</div>
                     {task.isBlocked && (
                       <span className="text-[10px] text-danger/80 truncate max-w-[180px]">
-                        ⚠ {task.blockedReason}
+                        {task.blockedReason}
                       </span>
                     )}
                   </div>

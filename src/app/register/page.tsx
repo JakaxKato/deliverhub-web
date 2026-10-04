@@ -1,53 +1,53 @@
 "use client";
 
-import { AlertCircle, ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type React from "react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { BrandLogo } from "../../components/brand-logo";
 import { ThemeToggle } from "../../components/theme-toggle";
 import { Button } from "../../components/ui/button";
 import { FieldLabel, Input } from "../../components/ui/input";
 import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  buildRegistrationPayload,
+  type RegistrationForm,
+  registrationSchema,
+} from "../../lib/registration";
 import { useAuthStore } from "../../stores/auth-store";
-import type { Department, Role } from "../../types";
+import type { ApiResponse, User } from "../../types";
 
 export default function RegisterPage() {
   const { login } = useAuthStore();
   const router = useRouter();
-
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("MEMBER");
-  const [department, setDepartment] = useState<Department>("FRONTEND");
-  const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegistrationForm>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: { name: "", email: "", password: "", department: "FRONTEND" },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: RegistrationForm) => {
     setErrorMsg(null);
-    setSubmitting(true);
-
     try {
-      const res = await api.post("/auth/register", {
-        name,
-        email,
-        password,
-        role,
-        department,
-      });
+      const payload = buildRegistrationPayload(values);
+      const res = await api.post<ApiResponse<{ token: string; user: User }>>(
+        "/auth/register",
+        payload,
+      );
 
       if (res.data.success) {
         const { token, user } = res.data.data;
         login(token, user);
-        router.push("/");
+        router.replace("/");
       }
     } catch (err) {
       setErrorMsg(getApiErrorMessage(err, "Registration failed."));
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -63,7 +63,7 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-gradient">
             Create Platform Account
           </h1>
-          <p className="text-xs text-muted">Join the operational deliverable backbone team</p>
+          <p className="text-xs text-muted">Create your internal engineering account</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-surface/70 p-6 backdrop-blur-xl shadow-glow space-y-4">
@@ -74,23 +74,26 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
             <div>
               <FieldLabel>Full Name</FieldLabel>
               <div className="relative">
-                <User
+                <UserIcon
                   className="w-4 h-4 text-faint absolute left-3 top-2.5 pointer-events-none"
                   strokeWidth={1.5}
                 />
                 <Input
                   type="text"
-                  required
                   placeholder="e.g. David Chen"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
                   className="pl-9"
+                  {...register("name")}
                 />
               </div>
+              {errors.name && (
+                <p role="alert" className="text-xs text-danger mt-1.5">
+                  {errors.name.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -102,13 +105,16 @@ export default function RegisterPage() {
                 />
                 <Input
                   type="email"
-                  required
                   placeholder="name@nodewave.id"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-9"
+                  {...register("email")}
                 />
               </div>
+              {errors.email && (
+                <p role="alert" className="text-xs text-danger mt-1.5">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -120,47 +126,37 @@ export default function RegisterPage() {
                 />
                 <Input
                   type="password"
-                  required
+                  autoComplete="new-password"
                   placeholder="At least 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-9"
+                  {...register("password")}
                 />
               </div>
+              {errors.password && (
+                <p role="alert" className="text-xs text-danger mt-1.5">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <FieldLabel>Platform Role</FieldLabel>
-                <select
-                  value={role}
-                  onChange={(e) => {
-                    const r = e.target.value as Role;
-                    setRole(r);
-                    if (r === "CLIENT") setDepartment("CLIENT");
-                    else if (r === "PM") setDepartment("PRODUCT");
-                  }}
-                  className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="MEMBER">Internal Engineer</option>
-                  <option value="PM">Product Manager</option>
-                  <option value="CLIENT">Client Guest</option>
-                </select>
+                <div className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground">
+                  Internal Engineer (MEMBER)
+                </div>
               </div>
 
               <div>
                 <FieldLabel>Department</FieldLabel>
                 <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value as Department)}
-                  disabled={role === "CLIENT"}
+                  aria-label="Department"
                   className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  {...register("department")}
                 >
                   <option value="FRONTEND">Frontend</option>
                   <option value="BACKEND">Backend</option>
                   <option value="UIUX">UI/UX Design</option>
-                  <option value="PRODUCT">Product</option>
-                  {role === "CLIENT" && <option value="CLIENT">Client</option>}
                 </select>
               </div>
             </div>
@@ -168,10 +164,10 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="w-full mt-2"
-              disabled={submitting}
-              loading={submitting}
+              disabled={isSubmitting}
+              loading={isSubmitting}
             >
-              {submitting ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Creating Account...</span>

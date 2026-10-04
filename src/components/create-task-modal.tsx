@@ -1,16 +1,34 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Check, Layers, Loader2, X } from "lucide-react";
 import { useState } from "react";
-import { api, getApiErrorMessage } from "../lib/api";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { getApiErrorMessage } from "../lib/api";
+import { registrationDepartments } from "../lib/registration";
+import { useSessionMutation } from "../lib/session-mutation";
+import { isSilentTaskError, taskApi } from "../lib/task-api";
+import { useAuthStore } from "../stores/auth-store";
 import { toast } from "../stores/toast-store";
-import type { Department, Priority, Task } from "../types";
+import type { ProjectMember, Task } from "../types";
 import { Button } from "./ui/button";
 import { FieldLabel, Input, Textarea } from "./ui/input";
 
+const createTaskSchema = z.object({
+  title: z.string().trim().min(1, "A deliverable title is required.").max(200),
+  description: z.string().trim().max(2000).optional(),
+  department: z.enum(registrationDepartments),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  assigneeId: z.string().optional(),
+  isClientVisible: z.boolean(),
+});
+type CreateTaskForm = z.infer<typeof createTaskSchema>;
+
 interface CreateTaskModalProps {
   projectId: string;
+  userId: string;
+  members: ProjectMember[];
   isOpen: boolean;
   onClose: () => void;
   existingTasks: Task[];
@@ -18,47 +36,65 @@ interface CreateTaskModalProps {
 
 export function CreateTaskModal({
   projectId,
+  userId,
+  members,
   isOpen,
   onClose,
   existingTasks,
 }: CreateTaskModalProps) {
-  const queryClient = useQueryClient();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [department, setDepartment] = useState<Department>("FRONTEND");
-  const [priority, setPriority] = useState<Priority>("MEDIUM");
-  const [isClientVisible, setIsClientVisible] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const engineers = members.filter((member) => member.user.role === "MEMBER");
   const [selectedPrereqIds, setSelectedPrereqIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors },
+  } = useForm<CreateTaskForm>({
+    resolver: zodResolver(createTaskSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      department: "FRONTEND",
+      priority: "MEDIUM",
+      assigneeId: "",
+      isClientVisible: false,
+    },
+  });
+  const assigneeId = useWatch({ control, name: "assigneeId" });
 
-  const createTaskMutation = useMutation({
-    mutationFn: async () => {
+  const createTaskMutation = useSessionMutation({
+    mutationFn: async (values: CreateTaskForm) => {
       setErrorMessage(null);
-      const res = await api.post("/tasks", {
+      if (user?.role !== "PM" || user.id !== userId) throw new Error("PM access required.");
+      return taskApi.create({
         projectId,
-        title,
-        description,
-        department,
-        priority,
-        isClientVisible,
+        title: values.title,
+        description: values.description ?? "",
+        department: values.department,
+        priority: values.priority,
+        isClientVisible: values.isClientVisible,
         prerequisiteTaskIds: selectedPrereqIds,
+        assigneeId: engineers.some((member) => member.userId === values.assigneeId)
+          ? values.assigneeId || undefined
+          : undefined,
       });
-      return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      setTitle("");
-      setDescription("");
+      reset();
       setSelectedPrereqIds([]);
       onClose();
       toast({ variant: "success", title: "Deliverable created" });
     },
     onError: (err) => {
+      if (isSilentTaskError(err)) return;
       setErrorMessage(getApiErrorMessage(err, "Failed to create deliverable."));
     },
   });
 
-  if (!isOpen) return null;
+  if (!isOpen || user?.role !== "PM" || user.id !== userId) return null;
 
   const togglePrereq = (id: string) => {
     setSelectedPrereqIds((prev) =>
@@ -101,9 +137,14 @@ export function CreateTaskModal({
             <Input
               type="text"
               placeholder="e.g. Design Payment Checkout Flow"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              aria-invalid={Boolean(errors.title)}
+              {...register("title")}
             />
+            {errors.title && (
+              <p role="alert" className="text-xs text-danger mt-1.5">
+                {errors.title.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -111,8 +152,7 @@ export function CreateTaskModal({
             <Textarea
               placeholder="Describe deliverables and acceptance criteria..."
               rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              {...register("description")}
             />
           </div>
 
@@ -120,11 +160,10 @@ export function CreateTaskModal({
             <div>
               <FieldLabel>Department</FieldLabel>
               <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value as Department)}
+                aria-label="Department"
                 className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                {...register("department")}
               >
-                <option value="PRODUCT">Product Management</option>
                 <option value="UIUX">UI/UX Design</option>
                 <option value="FRONTEND">Frontend Engineering</option>
                 <option value="BACKEND">Backend Engineering</option>
@@ -134,9 +173,8 @@ export function CreateTaskModal({
             <div>
               <FieldLabel>Priority</FieldLabel>
               <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as Priority)}
                 className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                {...register("priority")}
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -144,6 +182,27 @@ export function CreateTaskModal({
                 <option value="URGENT">Urgent</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <FieldLabel>Assigned Executor</FieldLabel>
+            <select
+              aria-label="Assigned executor"
+              className="w-full rounded-lg bg-surface-raised border border-border p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              {...register("assigneeId")}
+            >
+              <option value="">Unassigned</option>
+              {engineers.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.user.name} ({member.user.department})
+                </option>
+              ))}
+            </select>
+            {!assigneeId && (
+              <p className="text-[11px] text-warning mt-1">
+                An assigned engineer is required before this task can be started or completed.
+              </p>
+            )}
           </div>
 
           {/* Prerequisite Selection */}
@@ -200,12 +259,11 @@ export function CreateTaskModal({
             <input
               type="checkbox"
               id="clientVisible"
-              checked={isClientVisible}
-              onChange={(e) => setIsClientVisible(e.target.checked)}
               className="rounded bg-surface-raised border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+              {...register("isClientVisible")}
             />
             <label htmlFor="clientVisible" className="text-muted cursor-pointer">
-              Publish as Client-Visible Deliverable (Identities automatically masked)
+              Publish approved fields and deliverables to the client portal
             </label>
           </div>
         </div>
@@ -217,8 +275,8 @@ export function CreateTaskModal({
           <Button
             variant="primary"
             size="sm"
-            onClick={() => createTaskMutation.mutate()}
-            disabled={!title || createTaskMutation.isPending}
+            onClick={handleSubmit((values) => createTaskMutation.mutate(values))}
+            disabled={createTaskMutation.isPending}
           >
             {createTaskMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
