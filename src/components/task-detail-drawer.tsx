@@ -11,6 +11,7 @@ import {
   Lock,
   MessageSquare,
   Paperclip,
+  Play,
   Plus,
   Save,
   ShieldAlert,
@@ -25,7 +26,7 @@ import { useSessionMutation } from "../lib/session-mutation";
 import { isSilentTaskError, taskApi } from "../lib/task-api";
 import { beginDescriptionDraft, getTaskActions } from "../lib/task-permissions";
 import { toast } from "../stores/toast-store";
-import type { ApiResponse, Comment, Task, TaskPrerequisite, User } from "../types";
+import type { ApiResponse, Comment, Task, TaskPrerequisite, TaskStatus, User } from "../types";
 import { AttachmentLinkForm } from "./attachment-link-form";
 import { CommentComposer, type CommentFormValues } from "./comment-composer";
 import { Badge } from "./ui/badge";
@@ -100,6 +101,23 @@ export function TaskDetailDrawer({ task: initialTask, allTasks, user, onClose }:
       toast({
         variant: "error",
         title: "Failed to update deliverable",
+        description: getApiErrorMessage(err),
+      });
+    },
+  });
+
+  // Mutation: Status transition (executor-only, dependency-gated on the server)
+  const updateStatusMutation = useSessionMutation({
+    mutationFn: (status: TaskStatus) =>
+      taskApi.updateStatus(task.id, { status, version: task.version }),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Status updated" });
+    },
+    onError: (err) => {
+      if (isSilentTaskError(err)) return;
+      toast({
+        variant: "error",
+        title: "Failed to update status",
         description: getApiErrorMessage(err),
       });
     },
@@ -367,6 +385,62 @@ export function TaskDetailDrawer({ task: initialTask, allTasks, user, onClose }:
                     {task.assignee ? task.assignee.name : "Unassigned"}
                   </span>
                 </div>
+              </div>
+
+              {/* Workflow action: dependency-gated, executor-only completion */}
+              <div className="p-4 rounded-xl bg-surface-raised/50 border border-border space-y-2.5">
+                <span className="text-[11px] uppercase tracking-wider text-faint block">
+                  Workflow Action
+                </span>
+                <div className="flex items-center gap-3">
+                  {task.status === "TODO" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={isWriting || !actions.canStart}
+                      onClick={() => updateStatusMutation.mutate("IN_PROGRESS")}
+                    >
+                      <Play className="w-4 h-4" strokeWidth={1.5} />
+                      Start Deliverable
+                    </Button>
+                  )}
+                  {task.status === "IN_PROGRESS" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={isWriting || !actions.canComplete}
+                      onClick={() => updateStatusMutation.mutate("DONE")}
+                    >
+                      <CheckCircle2 className="w-4 h-4" strokeWidth={1.5} />
+                      Complete Deliverable
+                    </Button>
+                  )}
+                  {(task.status === "DONE" || task.status === "BLOCKED") && (
+                    <span className="text-xs text-muted">
+                      {task.status === "DONE"
+                        ? "This deliverable is complete."
+                        : "Locked until prerequisites are Done."}
+                    </span>
+                  )}
+                </div>
+                {task.status === "TODO" && !actions.canStart && (
+                  <p className="text-[11px] text-faint">
+                    {task.isBlocked
+                      ? task.blockedReason || "Blocked by incomplete prerequisites."
+                      : user.role === "PM"
+                        ? "Only the assigned executor can start a deliverable."
+                        : "Only the assigned engineer can start this deliverable."}
+                  </p>
+                )}
+                {task.status === "IN_PROGRESS" && !actions.canComplete && (
+                  <p className="text-[11px] text-faint">
+                    {task.isBlocked
+                      ? task.blockedReason || "Blocked by incomplete prerequisites."
+                      : user.role === "PM"
+                        ? "Product Managers cannot mark tasks as Done — only the assigned executor can."
+                        : "Only the assigned engineer can complete this deliverable."}
+                  </p>
+                )}
               </div>
 
               {/* Core Description Section */}
